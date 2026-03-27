@@ -23,7 +23,14 @@ CREATE TABLE IF NOT EXISTS articles (
     subcategory  TEXT,
     score        INTEGER,
     edition_date TEXT,   -- YYYY-MM-DD of the newsletter run that produced this article
-    github_url   TEXT    -- GitHub repo link (HF papers only)
+    github_url   TEXT,   -- GitHub repo link (HF papers only)
+    overview     TEXT,   -- 2-3 sentence deep overview (top stories only)
+    details      TEXT,   -- JSON array of bullet points (top stories only)
+    why_it_matters TEXT, -- editorial perspective (top stories only)
+    one_liner    TEXT,   -- compact paragraph (quick hits only)
+    company_tag  TEXT,   -- e.g. "META", "OPENAI"
+    is_top_story INTEGER DEFAULT 0,  -- 1 = deep treatment, 0 = quick hit
+    og_image     TEXT    -- og:image URL extracted during scraping
 );
 """
 
@@ -41,6 +48,13 @@ MIGRATIONS = [
     # so articles published on Saturday correctly belong to the Monday edition.
     "ALTER TABLE articles ADD COLUMN edition_date TEXT",
     "ALTER TABLE articles ADD COLUMN github_url TEXT",
+    "ALTER TABLE articles ADD COLUMN overview TEXT",
+    "ALTER TABLE articles ADD COLUMN details TEXT",
+    "ALTER TABLE articles ADD COLUMN why_it_matters TEXT",
+    "ALTER TABLE articles ADD COLUMN one_liner TEXT",
+    "ALTER TABLE articles ADD COLUMN company_tag TEXT",
+    "ALTER TABLE articles ADD COLUMN is_top_story INTEGER DEFAULT 0",
+    "ALTER TABLE articles ADD COLUMN og_image TEXT",
 ]
 
 
@@ -100,22 +114,33 @@ def save_articles(conn: sqlite3.Connection, articles: list[dict]) -> int:
                 INSERT INTO articles
                     (title, url, source, sector, summary, ai_title, ai_summary,
                      published_at, fetched_at, is_github, is_featured, stars,
-                     subcategory, score, edition_date, github_url)
+                     subcategory, score, edition_date, github_url,
+                     overview, details, why_it_matters, one_liner,
+                     company_tag, is_top_story, og_image)
                 VALUES
                     (:title, :url, :source, :sector, :summary, :ai_title, :ai_summary,
                      :published_at, :fetched_at, :is_github, :is_featured, :stars,
-                     :subcategory, :score, :edition_date, :github_url)
+                     :subcategory, :score, :edition_date, :github_url,
+                     :overview, :details, :why_it_matters, :one_liner,
+                     :company_tag, :is_top_story, :og_image)
                 ON CONFLICT(url) DO UPDATE SET
-                    ai_title     = excluded.ai_title,
-                    ai_summary   = excluded.ai_summary,
-                    is_featured  = excluded.is_featured,
-                    sector       = excluded.sector,
-                    summary      = excluded.summary,
-                    subcategory  = excluded.subcategory,
-                    score        = excluded.score,
-                    fetched_at   = excluded.fetched_at,
-                    edition_date = excluded.edition_date,
-                    github_url   = excluded.github_url
+                    ai_title       = excluded.ai_title,
+                    ai_summary     = excluded.ai_summary,
+                    is_featured    = excluded.is_featured,
+                    sector         = excluded.sector,
+                    summary        = excluded.summary,
+                    subcategory    = excluded.subcategory,
+                    score          = excluded.score,
+                    fetched_at     = excluded.fetched_at,
+                    edition_date   = excluded.edition_date,
+                    github_url     = excluded.github_url,
+                    overview       = excluded.overview,
+                    details        = excluded.details,
+                    why_it_matters = excluded.why_it_matters,
+                    one_liner      = excluded.one_liner,
+                    company_tag    = excluded.company_tag,
+                    is_top_story   = excluded.is_top_story,
+                    og_image       = excluded.og_image
                 """,
                 {
                     "fetched_at":   fetched_at,
@@ -126,7 +151,8 @@ def save_articles(conn: sqlite3.Connection, articles: list[dict]) -> int:
                     **{k: article.get(k) for k in
                        ("title", "url", "source", "sector", "summary",
                         "published_at", "is_github", "stars", "subcategory", "score",
-                        "github_url")},
+                        "github_url", "overview", "details", "why_it_matters",
+                        "one_liner", "company_tag", "is_top_story", "og_image")},
                 },
             )
             if conn.execute("SELECT changes()").fetchone()[0]:

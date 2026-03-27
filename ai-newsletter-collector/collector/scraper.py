@@ -93,35 +93,42 @@ class ArticleScraper:
     def scrape_all(self, articles: list[dict]) -> None:
         """
         Fetch all article URLs in parallel and populate each dict with a
-        'scraped' key containing the extracted text excerpt.
+        'scraped' key containing the extracted text excerpt and an 'og_image'
+        key with the Open Graph image URL.
 
         Falls back to the article's RSS summary when scraping fails, so
         the LLM always receives *some* context even for paywalled sources.
         Modifies article dicts in-place; returns nothing.
         """
-        def _worker(article: dict) -> tuple[dict, str]:
+        def _worker(article: dict) -> tuple[dict, str, str]:
             # Skip articles that already have scraped content (e.g. GitHub READMEs)
             if article.get("scraped"):
-                return article, article["scraped"]
-            return article, self.scrape_one(article["url"])
+                return article, article["scraped"], article.get("og_image", "")
+            excerpt, og_image = self.scrape_one(article["url"])
+            return article, excerpt, og_image
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
             futures = {pool.submit(_worker, a): a for a in articles}
             for future in as_completed(futures):
-                article, excerpt = future.result()
+                article, excerpt, og_image = future.result()
                 if excerpt:
                     article["scraped"] = excerpt
                 else:
                     # Fallback: RSS summary beats an empty string — the LLM
                     # can still make a relevance judgment from 1-2 sentences.
                     article["scraped"] = article.get("summary", "")
+                if og_image:
+                    article["og_image"] = og_image
 
-    def scrape_one(self, url: str) -> str:
+    def scrape_one(self, url: str) -> tuple[str, str]:
         """
-        Fetch a single URL and return a clean excerpt (≤ max_excerpt chars).
+        Fetch a single URL and return (excerpt, og_image_url).
+
+        excerpt: clean text excerpt (≤ max_excerpt chars)
+        og_image_url: Open Graph image URL (empty string if not found)
 
         Retries once after retry_delay seconds on any exception.
-        Returns an empty string when all attempts fail (paywall, 404, timeout).
+        Returns ("", "") when all attempts fail (paywall, 404, timeout).
         """
         for attempt in range(self.retries + 1):
             try:
@@ -137,30 +144,37 @@ class ArticleScraper:
                 # Skip non-HTML responses (PDFs, JSON APIs, RSS feeds, etc.)
                 content_type = resp.headers.get("Content-Type", "")
                 if "html" not in content_type:
-                    return ""
+                    return "", ""
 
                 # Parse only the first 200 KB — fast and sufficient for metadata + intro.
                 raw_html = resp.content[:200_000].decode("utf-8", errors="replace")
-                return self._extract_excerpt(raw_html)
+                soup = BeautifulSoup(raw_html, "html.parser")
+                excerpt = self._extract_excerpt_from_soup(soup)
+                og_image = self._og(soup, "og:image")
+                return excerpt, og_image
 
             except Exception:
                 if attempt < self.retries:
                     time.sleep(self.retry_delay)
                     continue
-                return ""  # All attempts exhausted
+                return "", ""  # All attempts exhausted
 
-        return ""
+        return "", ""
 
     # ── Private extraction helpers ────────────────────────────────────────────
 
     def _extract_excerpt(self, html: str) -> str:
+        """Build an excerpt from raw HTML. Delegates to _extract_excerpt_from_soup."""
+        soup = BeautifulSoup(html, "html.parser")
+        return self._extract_excerpt_from_soup(soup)
+
+    def _extract_excerpt_from_soup(self, soup: BeautifulSoup) -> str:
         """
         Build an excerpt from the three content layers:
           1. og:title  →  clean canonical headline
           2. og:description or meta description  →  structured summary
           3. Body paragraphs  →  only when no description is found
         """
-        soup  = BeautifulSoup(html, "html.parser")
         parts: list[str] = []
 
         # Layer 1: Canonical title from Open Graph (often cleaner than <title>)

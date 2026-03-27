@@ -34,24 +34,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from db.storage import get_db_path
+from config import TOP_STORY_COUNT, OPENER_MODEL, OPENER_TEMPERATURE
 
 SPONSOR_NAME = os.getenv("SPONSOR_NAME", "")
 SPONSOR_TEXT = os.getenv("SPONSOR_TEXT", "")
 SPONSOR_URL  = os.getenv("SPONSOR_URL", "")
 
+# Keep CATEGORY_ORDER and CATEGORY_META for backward compatibility (used by main.py)
 CATEGORY_META = {
-    "Model Releases":            {"label": "Model Releases",            "emoji": "🚀", "color": "#2563eb"},
-    "Products & Features":       {"label": "Products & Features",       "emoji": "⚡", "color": "#7c3aed"},
-    "RAG, Agents & Techniques":  {"label": "RAG, Agents & Techniques",  "emoji": "🔧", "color": "#0891b2"},
-    "Research & Open Source":    {"label": "Research & Open Source",    "emoji": "🔬", "color": "#059669"},
-    "Chips & Infrastructure":    {"label": "Chips & Infrastructure",    "emoji": "💻", "color": "#d97706"},
-    "AI Applications":           {"label": "AI Applications",           "emoji": "🌐", "color": "#6b7280"},
-    "Productivity & Efficiency": {"label": "Productivity & Efficiency", "emoji": "📈", "color": "#0d9488"},
-    "Policy & Governance":       {"label": "Policy & Governance",       "emoji": "🏛️", "color": "#4f46e5"},
-    "Security & Threats":        {"label": "Security & Threats",        "emoji": "🔐", "color": "#dc2626"},
-    "Business & Funding":        {"label": "Business & Funding",        "emoji": "💼", "color": "#15803d"},
-    "Tutorials & Guides":        {"label": "Tutorials & Guides",        "emoji": "📖", "color": "#0369a1"},
-    "Trending Repos & Papers":   {"label": "Trending Repos & Papers",   "emoji": "🐙", "color": "#334155"},
+    "Model Releases":            {"label": "Model Releases",            "emoji": "\U0001f680", "color": "#2563eb"},
+    "Products & Features":       {"label": "Products & Features",       "emoji": "\u26a1",     "color": "#7c3aed"},
+    "RAG, Agents & Techniques":  {"label": "RAG, Agents & Techniques",  "emoji": "\U0001f527", "color": "#0891b2"},
+    "Research & Open Source":    {"label": "Research & Open Source",    "emoji": "\U0001f52c", "color": "#059669"},
+    "Chips & Infrastructure":    {"label": "Chips & Infrastructure",    "emoji": "\U0001f4bb", "color": "#d97706"},
+    "AI Applications":           {"label": "AI Applications",           "emoji": "\U0001f310", "color": "#6b7280"},
+    "Productivity & Efficiency": {"label": "Productivity & Efficiency", "emoji": "\U0001f4c8", "color": "#0d9488"},
+    "Policy & Governance":       {"label": "Policy & Governance",       "emoji": "\U0001f3db\ufe0f", "color": "#4f46e5"},
+    "Security & Threats":        {"label": "Security & Threats",        "emoji": "\U0001f510", "color": "#dc2626"},
+    "Business & Funding":        {"label": "Business & Funding",        "emoji": "\U0001f4bc", "color": "#15803d"},
+    "Tutorials & Guides":        {"label": "Tutorials & Guides",        "emoji": "\U0001f4d6", "color": "#0369a1"},
+    "Trending Repos & Papers":   {"label": "Trending Repos & Papers",   "emoji": "\U0001f419", "color": "#334155"},
 }
 
 CATEGORY_ORDER = [
@@ -79,6 +81,7 @@ GRAY        = "#6b7280"
 LIGHT_GRAY  = "#e5e7eb"
 BG          = "#f1f5f9"
 WHITE       = "#ffffff"
+ACCENT      = "#2563eb"
 
 
 # =============================================================================
@@ -95,25 +98,76 @@ def get_latest_edition_date(conn: sqlite3.Connection) -> str | None:
     return row[0] if row else None
 
 
-def get_featured_articles(conn: sqlite3.Connection, date_str: str) -> dict[str, list[dict]]:
-    """Fetch featured articles for the given edition date, grouped by sector."""
+def get_featured_articles(conn: sqlite3.Connection, date_str: str) -> tuple[list[dict], list[dict]]:
+    """Fetch featured articles for the given edition date, split into (top_stories, quick_hits)."""
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         """
         SELECT * FROM articles
         WHERE is_featured = 1
           AND COALESCE(edition_date, DATE(fetched_at)) = ?
-        ORDER BY sector, COALESCE(score, 0) DESC
+        ORDER BY COALESCE(score, 0) DESC
         """,
         (date_str,),
     ).fetchall()
 
-    grouped: dict[str, list[dict]] = {c: [] for c in CATEGORY_ORDER}
-    for row in rows:
-        category = row["sector"]  # sector column stores category string
-        if category in grouped:
-            grouped[category].append(dict(row))
-    return grouped
+    all_articles = [dict(row) for row in rows]
+
+    # Split by is_top_story flag if available, else fall back to score-based split
+    top_stories = [a for a in all_articles if a.get("is_top_story")]
+    quick_hits  = [a for a in all_articles if not a.get("is_top_story")]
+
+    # Backward compat: if no articles have is_top_story set, split by score rank
+    if not top_stories and all_articles:
+        top_stories = all_articles[:TOP_STORY_COUNT]
+        quick_hits  = all_articles[TOP_STORY_COUNT:]
+
+    return top_stories, quick_hits
+
+
+# =============================================================================
+# LLM opener generation
+# =============================================================================
+
+def generate_opener(top_stories: list[dict]) -> str:
+    """Call LLM to generate a 2-3 sentence editorial opener based on today's top stories."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or not top_stories:
+        return _fallback_opener(top_stories)
+
+    from openai import OpenAI
+    from collector.prompts import OPENER_PROMPT
+
+    story_lines = "\n".join(
+        f"- {a.get('ai_title') or a.get('title', '')}"
+        for a in top_stories
+    )
+
+    try:
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model=OPENER_MODEL,
+            messages=[{"role": "user", "content": OPENER_PROMPT.format(top_stories=story_lines)}],
+            temperature=OPENER_TEMPERATURE,
+            response_format={"type": "json_object"},
+            max_tokens=300,
+        )
+        data = json.loads(response.choices[0].message.content)
+        opener = data.get("opener", "")
+        if opener:
+            return opener
+    except Exception as exc:
+        print(f"  [!] Opener generation failed: {exc}")
+
+    return _fallback_opener(top_stories)
+
+
+def _fallback_opener(top_stories: list[dict]) -> str:
+    """Simple fallback opener when LLM is unavailable."""
+    if top_stories:
+        lead = top_stories[0].get("ai_title") or top_stories[0].get("title", "")
+        return f"Good morning. Today's lead: {lead}. Here's everything you need to know."
+    return "Good morning. Here are today's most important AI stories — curated and summarized."
 
 
 # =============================================================================
@@ -129,6 +183,11 @@ def read_time(text: str) -> str:
     return f"{mins} min {secs} sec" if secs else f"{mins} min"
 
 
+def _esc(text: str) -> str:
+    """Escape HTML special characters."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 def _divider(color: str = LIGHT_GRAY) -> str:
     return (
         f'<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">'
@@ -136,135 +195,209 @@ def _divider(color: str = LIGHT_GRAY) -> str:
     )
 
 
-def _badge(text: str, bg_color: str) -> str:
-    """Render a small pill badge with text."""
-    return (
-        f'<span style="display:inline-block;background-color:{bg_color};color:#ffffff;'
-        f'font-family:Helvetica,Arial,sans-serif;font-size:10px;font-weight:700;'
-        f'letter-spacing:0.5px;text-transform:uppercase;padding:3px 8px;'
-        f'border-radius:3px;line-height:1.4;">{text}</span>'
-    )
-
-
-def _sector_header(meta: dict) -> str:
-    """Full-width sector heading between article groups."""
+def _section_divider() -> str:
+    """Full-width divider between major sections."""
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation"
-           style="max-width:600px;margin:0 auto 12px auto;" width="100%">
+           style="max-width:600px;margin:0 auto;" width="100%">
       <tbody><tr>
-        <td style="padding:24px 0 4px 0;">
-          <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
-                    color:{meta['color']};letter-spacing:1.5px;text-transform:uppercase;
-                    margin:0;padding:0;">{meta['emoji']} {meta['label']}</p>
-        </td>
-      </tr><tr>
-        <td>{_divider(meta['color'])}</td>
+        <td style="padding:8px 0;">{_divider("#374151")}</td>
       </tr></tbody>
     </table>"""
 
 
-def _article_card(a: dict) -> str:
-    """Render a single featured article as a bordered card."""
-    category     = a.get("category") or a.get("sector", "")
-    meta         = CATEGORY_META.get(category, {"color": DARK_GRAY, "label": ""})
-    sector_color = meta["color"]
+def _company_tag_badge(tag: str) -> str:
+    """Render a small uppercase company tag label."""
+    if not tag:
+        return ""
+    return (
+        f'<p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;'
+        f'letter-spacing:1.5px;text-transform:uppercase;color:{GRAY};margin:0 0 8px 0;">'
+        f'{_esc(tag)}</p>'
+    )
 
-    title     = (a.get("ai_title") or a.get("title", "")).strip()
-    url       = a.get("url", "#")
-    source    = a.get("source") or ""
-    summary   = (a.get("ai_summary") or a.get("summary") or "").replace("<", "&lt;").replace(">", "&gt;")
-    subcategory = a.get("subcategory") or ""
 
-    # Stars row (GitHub only)
-    stars_html = ""
-    if a.get("is_github") and a.get("stars"):
-        stars_html = f"""
+def _top_story_card(a: dict) -> str:
+    """Render a top story with full Rundown-style treatment."""
+    title       = (a.get("ai_title") or a.get("title", "")).strip()
+    url         = a.get("url", "#")
+    company_tag = a.get("company_tag", "")
+    overview    = _esc(a.get("overview") or a.get("ai_summary") or a.get("summary") or "")
+    why_matters = _esc(a.get("why_it_matters", ""))
+    og_image    = a.get("og_image", "")
+    source      = a.get("source", "")
+
+    # Parse details from JSON string
+    details_raw = a.get("details", "[]")
+    try:
+        details = json.loads(details_raw) if isinstance(details_raw, str) else details_raw
+    except (json.JSONDecodeError, TypeError):
+        details = []
+
+    # OG image block
+    image_html = ""
+    if og_image:
+        image_html = f"""
         <tr>
-          <td style="padding:0 20px 6px 20px;">
-            <span style="font-family:Helvetica,Arial,sans-serif;font-size:13px;
-                         color:{ORANGE};font-weight:600;">★ {a['stars']:,} stars</span>
+          <td style="padding:12px 20px 0 20px;">
+            <img src="{og_image}" alt="" width="560" style="display:block;width:100%;max-width:560px;
+                 height:auto;border-radius:6px;border:1px solid {LIGHT_GRAY};" />
           </td>
         </tr>"""
 
-    summary_html = ""
-    if summary:
-        summary_html = f"""
+    # Details bullets
+    details_html = ""
+    if details:
+        bullets = "".join(
+            f'<li style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;'
+            f'color:{DARK_GRAY};margin:0 0 6px 0;">{_esc(str(d))}</li>'
+            for d in details[:4]
+        )
+        details_html = f"""
         <tr>
-          <td style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
-                     color:{DARK_GRAY};padding:10px 20px 0 20px;">{summary}</td>
+          <td style="padding:12px 20px 0 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
+                      color:{BLACK};margin:0 0 8px 0;">The details:</p>
+            <ul style="margin:0;padding:0 0 0 20px;">{bullets}</ul>
+          </td>
         </tr>"""
 
-    source_html = (
-        f'<span style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:{GRAY};">'
-        f'{source}</span>'
-        if source else ""
-    )
+    # Why it matters
+    why_html = ""
+    if why_matters:
+        why_html = f"""
+        <tr>
+          <td style="padding:12px 20px 0 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
+                      color:{BLACK};margin:0 0 4px 0;">Why it matters:</p>
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
+                      color:{DARK_GRAY};margin:0;">{why_matters}</p>
+          </td>
+        </tr>"""
 
-    # GitHub repo link — shown for HF papers that have an associated repo
-    github_url = a.get("github_url") or ""
-    github_link_html = (
-        f'<a href="{github_url}" style="font-family:Helvetica,Arial,sans-serif;font-size:11px;'
-        f'color:{GRAY};text-decoration:none;margin-left:12px;" target="_blank">⬡ GitHub →</a>'
-        if github_url else ""
-    )
-
-    footer_html = f'<td style="padding:8px 20px 14px 20px;" align="right">{source_html}{github_link_html}</td>'
+    # Source attribution
+    source_html = ""
+    if source:
+        source_html = (
+            f'<span style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:{GRAY};">'
+            f'Source: {_esc(source)}</span>'
+        )
 
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation"
-           style="max-width:600px;margin:0 auto 20px auto;background-color:{WHITE};
-                  border:1px solid {LIGHT_GRAY};border-top:3px solid {sector_color};" width="100%">
+           style="max-width:600px;margin:0 auto 24px auto;background-color:{WHITE};
+                  border:1px solid {LIGHT_GRAY};border-radius:8px;" width="100%">
       <tbody>
-        {stars_html}
         <tr>
-          <td style="padding:16px 20px 0 20px;">
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;
-                      line-height:24px;color:{BLACK};margin:0;">
-              <a href="{url}" style="color:{BLACK};text-decoration:none;" target="_blank">{title}</a>
+          <td style="padding:20px 20px 0 20px;">
+            {_company_tag_badge(company_tag)}
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:19px;font-weight:800;
+                      line-height:26px;color:{BLACK};margin:0;">
+              <a href="{url}" style="color:{BLACK};text-decoration:none;" target="_blank">{_esc(title)}</a>
             </p>
           </td>
         </tr>
-        {summary_html}
-        <tr>{footer_html}</tr>
+        {image_html}
+        <tr>
+          <td style="padding:12px 20px 0 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
+                      color:{BLACK};margin:0 0 4px 0;">The Rundown:</p>
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
+                      color:{DARK_GRAY};margin:0;">{overview}</p>
+          </td>
+        </tr>
+        {details_html}
+        {why_html}
+        <tr>
+          <td style="padding:12px 20px 16px 20px;" align="right">{source_html}</td>
+        </tr>
       </tbody>
     </table>"""
 
 
-# =============================================================================
-# Full email renderer
-# =============================================================================
+def _quick_hits_section(articles: list[dict]) -> str:
+    """Render the quick hits section with compact one-liner items."""
+    if not articles:
+        return ""
 
-def build_html(grouped: dict[str, list[dict]], date_str: str) -> str:
-    """Render the full HTML email."""
-    dt           = datetime.strptime(date_str, "%Y-%m-%d")
-    display_date = dt.strftime("%B %d, %Y")
-    day_name     = dt.strftime("%A")
+    items_html = ""
+    for a in articles:
+        company  = a.get("company_tag", "")
+        one_liner = _esc(a.get("one_liner") or a.get("ai_summary") or a.get("summary") or "")
+        title    = (a.get("ai_title") or a.get("title", "")).strip()
+        url      = a.get("url", "#")
 
-    all_articles = [a for c in CATEGORY_ORDER for a in grouped.get(c, [])]
-    total        = len(all_articles)
+        company_bold = (
+            f'<strong style="color:{BLACK};">{_esc(company)}</strong> '
+            if company else ""
+        )
 
-    all_text = " ".join((a.get("ai_summary") or a.get("summary") or "") for a in all_articles)
-    rt = read_time(all_text) if all_text.strip() else "5 min"
+        # Stars badge for GitHub repos
+        stars_html = ""
+        if a.get("is_github") and a.get("stars"):
+            stars_html = (
+                f' <span style="color:{ORANGE};font-weight:600;">'
+                f'\u2605 {a["stars"]:,}</span>'
+            )
 
-    # ── Sponsor block ─────────────────────────────────────────────────────────
-    sponsor_html = ""
-    if SPONSOR_NAME:
+        items_html += f"""
+        <tr>
+          <td style="padding:12px 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
+                      color:{DARK_GRAY};margin:0;">
+              {company_bold}<a href="{url}" style="color:{ACCENT};font-weight:600;
+              text-decoration:none;" target="_blank">{_esc(title)}</a>{stars_html}
+            </p>
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;
+                      color:{GRAY};margin:4px 0 0 0;">{one_liner}</p>
+          </td>
+        </tr>
+        <tr><td style="padding:0 20px;">{_divider(LIGHT_GRAY)}</td></tr>"""
+
+    return f"""
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation"
+           style="max-width:600px;margin:0 auto 24px auto;background-color:{WHITE};
+                  border:1px solid {LIGHT_GRAY};border-radius:8px;" width="100%">
+      <tbody>
+        <tr>
+          <td style="padding:20px 20px 4px 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
+                      letter-spacing:1.5px;text-transform:uppercase;color:{ACCENT};
+                      margin:0;">EVERYTHING ELSE IN AI TODAY</p>
+          </td>
+        </tr>
+        <tr><td style="padding:4px 20px 0 20px;">{_divider(ACCENT)}</td></tr>
+        {items_html}
+      </tbody>
+    </table>"""
+
+
+def _sponsor_block() -> str:
+    """Render the sponsor block if configured."""
+    if not SPONSOR_NAME:
+        return ""
+
+    sponsor_body = ""
+    if SPONSOR_TEXT:
         sponsor_body = (
             f'<p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;'
             f'line-height:21px;color:{DARK_GRAY};margin:8px 0 0;">{SPONSOR_TEXT}</p>'
-            if SPONSOR_TEXT else ""
         )
+
+    cta = ""
+    if SPONSOR_URL:
         cta = (
             f'<tr><td align="center" style="padding:12px 0 0;">'
             f'<a href="{SPONSOR_URL}" style="font-family:Helvetica,Arial,sans-serif;'
-            f'font-size:13px;color:{ORANGE};font-weight:700;text-decoration:none;">Learn more →</a>'
-            f'</td></tr>'
-            if SPONSOR_URL else ""
+            f'font-size:13px;color:{ORANGE};font-weight:700;text-decoration:none;">'
+            f'Learn more \u2192</a></td></tr>'
         )
-        sponsor_html = f"""
+
+    return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation"
            style="max-width:600px;margin:0 auto 24px auto;background-color:{WHITE};
-                  border:1px solid {LIGHT_GRAY};border-left:3px solid {ORANGE};" width="100%">
+                  border:1px solid {LIGHT_GRAY};border-left:3px solid {ORANGE};
+                  border-radius:8px;" width="100%">
       <tbody>
         <tr>
           <td style="padding:14px 20px;">
@@ -281,15 +414,64 @@ def build_html(grouped: dict[str, list[dict]], date_str: str) -> str:
       </tbody>
     </table>"""
 
-    # ── Article cards grouped by sector ──────────────────────────────────────
-    article_boxes = ""
-    for category in CATEGORY_ORDER:
-        articles = grouped.get(category, [])
-        if not articles:
-            continue
-        article_boxes += _sector_header(CATEGORY_META[category])
-        for a in articles:
-            article_boxes += _article_card(a)
+
+# =============================================================================
+# Full email renderer
+# =============================================================================
+
+def build_html(top_stories: list[dict], quick_hits: list[dict], date_str: str) -> str:
+    """Render the full HTML email in Rundown-style format."""
+    dt           = datetime.strptime(date_str, "%Y-%m-%d")
+    display_date = dt.strftime("%B %d, %Y")
+    day_name     = dt.strftime("%A")
+
+    all_articles = top_stories + quick_hits
+    total        = len(all_articles)
+
+    all_text = " ".join(
+        (a.get("overview") or a.get("ai_summary") or a.get("summary") or "")
+        for a in all_articles
+    )
+    rt = read_time(all_text) if all_text.strip() else "5 min"
+
+    # ── Generate editorial opener ────────────────────────────────────────────
+    opener = generate_opener(top_stories)
+
+    # ── Table of Contents ────────────────────────────────────────────────────
+    toc_items = ""
+    for a in top_stories:
+        title = (a.get("ai_title") or a.get("title", "")).strip()
+        toc_items += (
+            f'<li style="font-family:Helvetica,Arial,sans-serif;font-size:14px;'
+            f'line-height:24px;color:#d1d5db;margin:0 0 2px 0;">{_esc(title)}</li>'
+        )
+
+    toc_html = ""
+    if toc_items:
+        toc_html = f"""
+        {_divider("#374151")}
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;
+                  color:{WHITE};margin:16px 0 8px 0;">In today's AI rundown:</p>
+        <ul style="margin:0;padding:0 0 0 20px;">{toc_items}</ul>"""
+
+    # ── Top story cards with sponsor inserted after story 2 ──────────────────
+    stories_html = ""
+    sponsor = _sponsor_block()
+    for i, a in enumerate(top_stories):
+        # Section divider between stories
+        if i > 0:
+            stories_html += _section_divider()
+        stories_html += _top_story_card(a)
+        # Insert sponsor after the 2nd story
+        if i == 1 and sponsor:
+            stories_html += sponsor
+
+    # If fewer than 2 top stories, place sponsor after all stories
+    if len(top_stories) < 2 and sponsor:
+        stories_html += sponsor
+
+    # ── Quick hits ───────────────────────────────────────────────────────────
+    quick_html = _quick_hits_section(quick_hits)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -297,7 +479,7 @@ def build_html(grouped: dict[str, list[dict]], date_str: str) -> str:
   <meta charset="utf-8">
   <meta content="IE=edge" http-equiv="X-UA-Compatible">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>AI Daily — {display_date}</title>
+  <title>AI Daily \u2014 {display_date}</title>
 </head>
 <body style="margin:0;padding:0;background-color:{BG};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table bgcolor="{BG}" border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
@@ -306,7 +488,7 @@ def build_html(grouped: dict[str, list[dict]], date_str: str) -> str:
 
   <!-- HEADER -->
   <table border="0" cellpadding="0" cellspacing="0" role="presentation"
-         style="max-width:600px;margin:0 auto 24px auto;background-color:{BLACK};" width="100%">
+         style="max-width:600px;margin:0 auto 24px auto;background-color:{BLACK};border-radius:8px 8px 0 0;" width="100%">
     <tbody><tr>
       <td style="padding:28px 24px 24px 24px;">
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
@@ -318,30 +500,51 @@ def build_html(grouped: dict[str, list[dict]], date_str: str) -> str:
           AI Daily
         </p>
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#9ca3af;
-                  margin:0 0 20px 0;">{day_name}, {display_date}</p>
+                  margin:0 0 20px 0;">{day_name}, {display_date} \u00b7 {rt} read</p>
         {_divider("#374151")}
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:23px;
                   color:#d1d5db;margin:16px 0 0 0;">
-          Good morning. Here are today's <strong style="color:{WHITE};">{total} most important AI stories</strong>
-          — curated and summarized. {rt} read.
+          {_esc(opener)}
         </p>
+        {toc_html}
       </td>
     </tr></tbody>
   </table>
 
-  {sponsor_html}
+  <!-- SECTION LABEL -->
+  <table border="0" cellpadding="0" cellspacing="0" role="presentation"
+         style="max-width:600px;margin:0 auto 16px auto;" width="100%">
+    <tbody><tr>
+      <td style="padding:8px 0 0 0;">
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
+                  letter-spacing:1.5px;text-transform:uppercase;color:{DARK_GRAY};margin:0;">
+          TOP STORIES
+        </p>
+      </td>
+    </tr><tr>
+      <td style="padding:4px 0 0 0;">{_divider(DARK_GRAY)}</td>
+    </tr></tbody>
+  </table>
 
-  <!-- ARTICLES -->
-  {article_boxes}
+  <!-- TOP STORIES -->
+  {stories_html}
+
+  <!-- QUICK HITS -->
+  {quick_html}
 
   <!-- FOOTER -->
   <table border="0" cellpadding="0" cellspacing="0" role="presentation"
          style="max-width:600px;margin:0 auto 16px auto;" width="100%">
     <tbody><tr>
-      <td align="center" style="padding:20px 0;font-family:Helvetica,Arial,sans-serif;
-                                font-size:12px;line-height:18px;color:{GRAY};">
-        You're receiving this because you subscribed to AI Daily.<br>
-        <a href="#" style="color:{GRAY};text-decoration:underline;">Unsubscribe</a>
+      <td align="center" style="padding:20px 0;">
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;
+                  color:{DARK_GRAY};margin:0 0 12px 0;">
+          That's a wrap for today. See you tomorrow.
+        </p>
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:{GRAY};margin:0;">
+          You're receiving this because you subscribed to AI Daily.<br>
+          <a href="#" style="color:{GRAY};text-decoration:underline;">Unsubscribe</a>
+        </p>
       </td>
     </tr></tbody>
   </table>
@@ -380,7 +583,7 @@ def send_email(html: str, date_str: str) -> None:
     display_date = dt.strftime("%B %d, %Y")
 
     msg            = MIMEMultipart("alternative")
-    msg["Subject"] = f"AI Daily — {display_date}"
+    msg["Subject"] = f"AI Daily \u2014 {display_date}"
     msg["From"]    = gmail_user
     msg["To"]      = email_to
     msg.attach(MIMEText(html, "html"))
@@ -389,7 +592,7 @@ def send_email(html: str, date_str: str) -> None:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(gmail_user, gmail_pass)
             server.sendmail(gmail_user, email_to, msg.as_string())
-        print(f"  ✓ Email sent to {email_to}")
+        print(f"  \u2713 Email sent to {email_to}")
     except Exception as e:
         print(f"  [!] Failed to send email: {e}")
 
@@ -420,7 +623,7 @@ def send_to_beehiiv(html: str, date_str: str) -> None:
     display_date = dt.strftime("%B %d, %Y")
 
     payload = json.dumps({
-        "title":        f"AI Daily — {display_date}",
+        "title":        f"AI Daily \u2014 {display_date}",
         "body_content": html,
         "status":       "draft",
     }).encode("utf-8")
@@ -439,7 +642,7 @@ def send_to_beehiiv(html: str, date_str: str) -> None:
         with urllib.request.urlopen(req) as resp:
             result  = json.loads(resp.read().decode("utf-8"))
             post_id = result.get("data", {}).get("id", "unknown")
-            print(f"  ✓ Beehiiv draft created — post ID: {post_id}")
+            print(f"  \u2713 Beehiiv draft created \u2014 post ID: {post_id}")
             print(f"    Review it at: https://app.beehiiv.com/posts/{post_id}")
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -477,21 +680,20 @@ def main() -> None:
 
     print(f"Building email for edition: {edition_date}")
 
-    grouped = get_featured_articles(conn, edition_date)
+    top_stories, quick_hits = get_featured_articles(conn, edition_date)
     conn.close()
 
-    total = sum(len(v) for v in grouped.values())
+    total = len(top_stories) + len(quick_hits)
     if total == 0:
         print(f"  [!] No featured articles found for edition {edition_date}. Run main.py first.")
         return
 
-    active_categories = [c for c in CATEGORY_ORDER if grouped[c]]
-    print(f"  → {total} articles across {len(active_categories)} categories: {', '.join(active_categories)}")
+    print(f"  \u2192 {len(top_stories)} top stories + {len(quick_hits)} quick hits")
 
-    html = build_html(grouped, edition_date)
+    html = build_html(top_stories, quick_hits, edition_date)
 
     preview_path = save_preview(html, edition_date)
-    print(f"  ✓ Preview saved: {preview_path}")
+    print(f"  \u2713 Preview saved: {preview_path}")
 
     if "--send" in args:
         print("Sending email via Gmail...")

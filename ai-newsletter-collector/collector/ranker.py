@@ -33,9 +33,11 @@ from config import (
     MAX_ARTICLES_PER_SOURCE, MAX_ARTICLES_PER_SUBCATEGORY,
     MAX_ARTICLES_PER_CATEGORY, MAX_ARTICLES_PER_BONUS_CATEGORY,
     SCRAPE_WORKERS,
+    TOP_STORY_COUNT, QUICK_HIT_COUNT,
 )
 from collector.prompts import (
     DEDUP_PROMPT, FILTER_PROMPT, SUMMARIZE_PROMPT,
+    ENRICH_TOP_STORY_PROMPT, ENRICH_QUICK_HIT_PROMPT,
     CATEGORY_LIST, CATEGORY_DESCRIPTIONS,
 )
 from collector.scraper import ArticleScraper
@@ -614,7 +616,121 @@ def enforce_diversity_and_caps(articles: list[dict]) -> list[dict]:
 
 
 # =============================================================================
-# Step 9 — Output validation
+# Step 9 — Two-tier enrichment (top stories + quick hits)
+# =============================================================================
+
+def llm_enrich_top_stories(articles: list[dict], client: OpenAI) -> None:
+    """
+    Generate overview, details, why_it_matters, and company_tag for top stories.
+    These articles already have ai_title, ai_summary, category, score from step 5.
+    Modifies articles in-place.
+    """
+    if not articles:
+        return
+
+    payload = [
+        {
+            "index":   i,
+            "title":   a.get("ai_title") or a["title"],
+            "source":  a["source"],
+            "content": (a.get("scraped") or a.get("summary") or "")[:SUMMARIZE_CONTENT_CHARS],
+        }
+        for i, a in enumerate(articles)
+    ]
+
+    prompt = ENRICH_TOP_STORY_PROMPT.format(
+        articles=json.dumps(payload, ensure_ascii=False),
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=SUMMARIZE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=SUMMARIZE_TEMPERATURE,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(response.choices[0].message.content)
+        result_map = {
+            int(r["index"]): r
+            for r in data.get("articles", [])
+            if "index" in r
+        }
+
+        for i, article in enumerate(articles):
+            r = result_map.get(i, {})
+            article["overview"]       = r.get("overview") or article.get("ai_summary", "")
+            article["details"]        = json.dumps(r.get("details", []))
+            article["why_it_matters"] = r.get("why_it_matters", "")
+            article["company_tag"]    = r.get("company_tag", "")
+            article["is_top_story"]   = 1
+            # Keep ai_summary populated for backward compat (web app, old email builder)
+            article["ai_summary"]     = article["overview"]
+
+    except Exception as exc:
+        print(f"  [!] Top story enrichment failed: {exc}")
+        for a in articles:
+            a["is_top_story"] = 1
+            a.setdefault("overview", a.get("ai_summary", ""))
+            a.setdefault("details", "[]")
+            a.setdefault("why_it_matters", "")
+            a.setdefault("company_tag", "")
+
+
+def llm_enrich_quick_hits(articles: list[dict], client: OpenAI) -> None:
+    """
+    Generate one_liner and company_tag for quick hit articles.
+    These articles already have ai_title, ai_summary, category, score from step 5.
+    Modifies articles in-place.
+    """
+    if not articles:
+        return
+
+    payload = [
+        {
+            "index":   i,
+            "title":   a.get("ai_title") or a["title"],
+            "source":  a["source"],
+            "content": (a.get("scraped") or a.get("summary") or "")[:SUMMARIZE_CONTENT_CHARS],
+        }
+        for i, a in enumerate(articles)
+    ]
+
+    prompt = ENRICH_QUICK_HIT_PROMPT.format(
+        articles=json.dumps(payload, ensure_ascii=False),
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=SUMMARIZE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=SUMMARIZE_TEMPERATURE,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(response.choices[0].message.content)
+        result_map = {
+            int(r["index"]): r
+            for r in data.get("articles", [])
+            if "index" in r
+        }
+
+        for i, article in enumerate(articles):
+            r = result_map.get(i, {})
+            article["one_liner"]    = r.get("one_liner") or article.get("ai_summary", "")
+            article["company_tag"]  = r.get("company_tag", "")
+            article["is_top_story"] = 0
+            # Keep ai_summary populated for backward compat
+            article["ai_summary"]   = article["one_liner"]
+
+    except Exception as exc:
+        print(f"  [!] Quick hit enrichment failed: {exc}")
+        for a in articles:
+            a["is_top_story"] = 0
+            a.setdefault("one_liner", a.get("ai_summary", ""))
+            a.setdefault("company_tag", "")
+
+
+# =============================================================================
+# Step 10 — Output validation
 # =============================================================================
 
 def _validate_articles(articles: list[dict]) -> None:
@@ -722,38 +838,52 @@ def run_pipeline(articles: list[dict]) -> list[dict]:
 
     client = OpenAI(api_key=api_key)
 
-    print(f"\nStep 1/9: Jaccard dedup ({len(articles)} articles)...")
+    print(f"\nStep 1/10: Jaccard dedup ({len(articles)} articles)...")
     articles = global_jaccard_dedup(articles)
 
-    print(f"Step 2/9: LLM dedup ({len(articles)} articles)...")
+    print(f"Step 2/10: LLM dedup ({len(articles)} articles)...")
     articles = global_llm_dedup(articles, client)
 
-    print(f"Step 3/9: Scraping {len(articles)} article pages...")
+    print(f"Step 3/10: Scraping {len(articles)} article pages...")
     articles = scrape_all(articles)
 
-    print(f"Step 4/9: LLM filter ({len(articles)} candidates)...")
+    print(f"Step 4/10: LLM filter ({len(articles)} candidates)...")
     articles = llm_filter(articles, client)
 
     print(f"  Final dedup pass on {len(articles)} filtered articles...")
     articles = _dedup_batch(articles, client, skip_irrelevant=True)
 
-    print(f"Step 5/9: LLM summarise + categorise ({len(articles)} articles)...")
+    print(f"Step 5/10: LLM summarise + categorise ({len(articles)} articles)...")
     articles = llm_summarize_and_categorize(articles, client)
 
-    print("Step 6/9: Applying score bonuses...")
+    print("Step 6/10: Applying score bonuses...")
     articles = apply_score_bonuses(articles)
 
-    print("Step 7/9: Applying score gate...")
+    print("Step 7/10: Applying score gate...")
     articles = apply_score_gate(articles)
 
-    print("Step 8/9: Enforcing diversity and per-category caps...")
+    print("Step 8/10: Enforcing diversity and per-category caps...")
     articles = enforce_diversity_and_caps(articles)
 
-    print("Step 9/9: Validating output...")
+    # ── Step 9: Two-tier enrichment ──────────────────────────────────────────
+    # Articles are already sorted by score descending from step 8.
+    # Top N become deep stories, next M become quick hits.
+    top_stories = articles[:TOP_STORY_COUNT]
+    quick_hits  = articles[TOP_STORY_COUNT : TOP_STORY_COUNT + QUICK_HIT_COUNT]
+
+    print(f"Step 9/10: Enriching {len(top_stories)} top stories + {len(quick_hits)} quick hits...")
+    llm_enrich_top_stories(top_stories, client)
+    llm_enrich_quick_hits(quick_hits, client)
+
+    # Recombine — top stories first, then quick hits
+    articles = top_stories + quick_hits
+
+    print("Step 10/10: Validating output...")
     _validate_articles(articles)
 
     for a in articles:
         a["is_featured"] = 1
 
-    print(f"\n  → {len(articles)} articles ready to publish")
+    print(f"\n  → {len(articles)} articles ready to publish"
+          f" ({len(top_stories)} top stories + {len(quick_hits)} quick hits)")
     return articles

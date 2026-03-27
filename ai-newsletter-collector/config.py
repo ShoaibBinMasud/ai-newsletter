@@ -54,7 +54,7 @@ PUBLISH_THRESHOLD_FALLBACKS: list[int] = [6, 5, 4]
 PUBLISH_MIN_ARTICLES: int = 5
 
 # Hard cap on articles in the final output (applied after diversity enforcement).
-PUBLISH_MAX_ARTICLES: int = 8
+PUBLISH_MAX_ARTICLES: int = 12
 
 # Per-category hard cap on articles in the final output.
 # Prevents any single topic from dominating the newsletter.
@@ -169,3 +169,17 @@ TIER1_SOURCES: frozenset[str] = frozenset({
     "Google Cloud AI Blog",
     "Azure AI Blog",
 })
+
+# =============================================================================
+# 10. Newsletter Format (Rundown-style)
+# =============================================================================
+
+# Number of deep stories with overview/details/why_it_matters
+TOP_STORY_COUNT: int = 4
+
+# Number of compact one-liner items in the quick hits section
+QUICK_HIT_COUNT: int = 6
+
+# Model and temperature for generating the editorial opener
+OPENER_MODEL: str = "gpt-4o"
+OPENER_TEMPERATURE: float = 0.4

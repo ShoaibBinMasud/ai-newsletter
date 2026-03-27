@@ -16,7 +16,6 @@ Usage
     python main.py
 """
 
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from dotenv import load_dotenv
@@ -31,7 +30,7 @@ from collector.hf_papers import fetch_top_paper
 from collector.ranker import run_pipeline, summarize_pinned
 from db.storage import get_db_path, init_db, save_articles
 from config import FEED_FETCH_WORKERS
-from email_builder import CATEGORY_ORDER, build_html, save_preview, send_to_beehiiv
+from email_builder import build_html, save_preview, send_to_beehiiv
 
 
 def _fetch_all_feeds() -> list[dict]:
@@ -121,17 +120,14 @@ def main() -> None:
     # ── Step 4: Build email + create Beehiiv draft ───────────────────────────
     edition_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Group featured articles by category using in-memory results
-    grouped: dict[str, list[dict]] = {c: [] for c in CATEGORY_ORDER}
-    for a in all_articles:
-        cat = a.get("category") or a.get("sector") or ""
-        if a.get("is_featured") and cat in grouped:
-            grouped[cat].append(a)
+    # Split featured articles into top stories and quick hits
+    top_stories = [a for a in all_articles if a.get("is_top_story")]
+    quick_hits  = [a for a in all_articles if a.get("is_featured") and not a.get("is_top_story")]
 
-    featured_total = sum(len(v) for v in grouped.values())
+    featured_total = len(top_stories) + len(quick_hits)
     if featured_total > 0:
-        print(f"\nBuilding email for {featured_total} featured articles...")
-        html         = build_html(grouped, edition_date)
+        print(f"\nBuilding email for {len(top_stories)} top stories + {len(quick_hits)} quick hits...")
+        html         = build_html(top_stories, quick_hits, edition_date)
         preview_path = save_preview(html, edition_date)
         print(f"  ✓ Preview saved: {preview_path}")
 
@@ -141,11 +137,15 @@ def main() -> None:
         print("\n  [!] No featured articles — skipping email build")
 
     # ── Step 5: Print summary table ──────────────────────────────────────────
-    print("\n─── Articles by category ───")
-    for cat in CATEGORY_ORDER:
-        count = len(grouped.get(cat, []))
-        if count > 0:
-            print(f"  {cat}: {count} articles")
+    print("\n─── Articles ───")
+    if top_stories:
+        print("  Top stories:")
+        for a in top_stories:
+            print(f"    • {a.get('ai_title') or a.get('title', '')[:60]}")
+    if quick_hits:
+        print("  Quick hits:")
+        for a in quick_hits:
+            print(f"    • {a.get('ai_title') or a.get('title', '')[:60]}")
 
     conn.close()
     print("\nDone.")
