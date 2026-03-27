@@ -1,0 +1,49 @@
+name: Daily Newsletter Collector
+
+on:
+  schedule:
+    # Runs every 30 minutes
+    - cron: '*/30 * * * *'
+
+  # Optional: allow manual trigger from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  newsletter:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          cd ai-newsletter-collector
+          pip install -r requirements.txt
+
+      - name: Run newsletter collector
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          DB_PATH: ../data/articles.db
+          SPONSOR_NAME: ${{ secrets.SPONSOR_NAME }}
+          SPONSOR_TEXT: ${{ secrets.SPONSOR_TEXT }}
+          SPONSOR_URL: ${{ secrets.SPONSOR_URL }}
+        run: |
+          cd ai-newsletter-collector
+          python run_daily.py --send
+
+      - name: Upload database changes
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: articles-database
+          path: data/articles.db
+          retention-days: 90
