@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload database changes
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: articles-database
           path: data/articles.db
