@@ -1,0 +1,62 @@
+name,url,sector,works,entries_24h,total_entries,http_status,note
+OpenAI Blog,https://openai.com/news/rss.xml,ai-updates,YES,2,891,200,OK
+Anthropic News,https://www.anthropic.com/rss.xml,ai-updates,NO,0,0,404,No public RSS feed available
+Google DeepMind,https://deepmind.google/blog/rss.xml,ai-updates,SLOW,0,100,200,"feed ok, no recent articles"
+DeepMind (alt),https://www.deepmind.com/blog/rss,ai-updates,NO,0,0,404,Duplicate; use Google DeepMind URL instead
+Google Blog AI,https://blog.google/technology/ai/rss/,ai-updates,SLOW,0,20,200,"feed ok, no recent articles"
+Google Research,https://research.google/blog/rss/,ai-updates,SLOW,0,100,200,"feed ok, no recent articles"
+Microsoft AI,https://blogs.microsoft.com/ai/feed,ai-updates,SLOW,0,10,200,"feed ok, no recent articles"
+Apple ML,https://machinelearning.apple.com/rss.xml,ai-updates,SLOW,0,10,200,"feed ok, no recent articles"
+NVIDIA Blog,https://feeds.feedburner.com/nvidiablog,ai-updates,YES,1,18,200,OK
+MIT AI News,https://news.mit.edu/rss/topic/artificial-intelligence2,ai-updates,YES,2,50,200,OK
+Berkeley AI (BAIR),https://bair.berkeley.edu/blog/feed.xml,ai-updates,SLOW,0,10,200,"feed ok, no recent articles"
+CMU ML Blog,https://blog.ml.cmu.edu/feed,ai-updates,SLOW,0,1,200,"feed ok, no recent articles"
+AI News,https://www.artificialintelligence-news.com/feed/,ai-updates,YES,2,12,200,OK
+The Verge AI,https://www.theverge.com/rss/ai-artificial-intelligence/index.xml,ai-updates,YES,3,10,200,OK
+The Verge Tech,https://www.theverge.com/rss/tech/index.xml,ai-updates,YES,10,10,200,OK
+Ars Technica,https://feeds.arstechnica.com/arstechnica/index,ai-updates,YES,12,20,200,OK
+MIT Tech Review AI,https://www.technologyreview.com/topic/artificial-intelligence/feed/,ai-updates,SLOW,0,10,200,"feed ok, no recent articles"
+MIT Tech Review,https://www.technologyreview.com/feed/,ai-updates,YES,3,10,200,OK
+MarkTechPost,https://www.marktechpost.com/feed/,ai-updates,YES,2,10,200,OK
+Import AI (Jack Clark),https://importai.substack.com/feed,ai-updates,YES,0,0,429,Fixed: use Substack URL
+Import AI (Beehiiv),https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml,ai-updates,YES,1,20,200,OK
+arXiv cs.AI,https://rss.arxiv.org/rss/cs.AI,ai-updates,YES,394,394,200,OK
+arXiv cs.CL (NLP),https://arxiv.org/rss/cs.CL,ai-updates,YES,159,159,200,OK
+TechCrunch AI,https://techcrunch.com/category/artificial-intelligence/feed/,ai-business,YES,9,20,200,OK
+TechCrunch (main),https://techcrunch.com/feed/,ai-business,YES,20,20,200,OK
+VentureBeat,https://venturebeat.com/category/ai/feed/,ai-business,SLOW,0,7,200,"feed ok, no articles at test time (7 entries confirmed)"
+Reuters via Google News,https://news.google.com/rss/search?q=site%3Areuters.com+technology&hl=en-US&gl=US&ceid=US%3Aen,ai-business,YES,23,100,200,OK
+NYT Technology,https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml,ai-business,YES,7,23,200,OK
+CNBC Tech,https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910,ai-business,YES,18,30,200,OK
+WSJ Tech,https://feeds.a.dj.com/rss/RSSWSJD.xml,ai-business,NO,0,20,200,Broken; WSJ Tech (alt) works instead
+WSJ Tech (alt),https://feeds.content.dowjones.io/public/rss/RSSWSJD,ai-business,YES,8,40,200,Use this URL instead of original WSJ
+Meta News,https://about.fb.com/feed,ai-business,YES,1,10,200,OK
+Databricks Blog,https://www.databricks.com/feed,ai-business,YES,2,10,200,OK
+Snowflake Blog,https://www.snowflake.com/blog/feed/,ai-business,NO,0,0,404,"RSS feed empty / broken, no alternative found"
+a16z Blog,https://a16z.com/feed/,ai-business,NO,0,0,404,No public RSS feed available
+Hugging Face Blog,https://huggingface.co/blog/feed.xml,ai-dev,YES,1,750,200,OK
+Towards Data Science,https://towardsdatascience.com/feed,ai-dev,YES,4,20,200,OK
+NVIDIA Developer,https://developer.nvidia.com/blog/feed,ai-dev,YES,4,100,200,OK
+AWS Machine Learning,https://aws.amazon.com/blogs/machine-learning/feed/,ai-dev,YES,5,20,200,OK
+AWS DevOps,https://aws.amazon.com/blogs/devops/feed/,ai-dev,SLOW,0,20,200,"feed ok, no recent articles"
+Meta Engineering,https://engineering.fb.com/feed,ai-dev,SLOW,0,9,200,"feed ok, no recent articles"
+Pinecone Blog,https://www.pinecone.io/blog/rss.xml,ai-dev,NO,0,0,404,No public RSS feed available
+Nanonets Blog,https://nanonets.com/blog/rss,ai-dev,SLOW,0,15,200,"feed ok, no recent articles"
+Kubernetes Blog,https://kubernetes.io/feed.xml,ai-dev,SLOW,0,50,200,"feed ok, no recent articles"
+HashiCorp Blog,https://www.hashicorp.com/blog/feed.xml,ai-dev,SLOW,0,20,200,"feed ok, no recent articles"
+Databricks Docs,https://docs.databricks.com/aws/en/feed.xml,ai-dev,YES,4,578,200,OK
+arXiv cs.LG (ML),https://arxiv.org/rss/cs.LG,ai-dev,YES,286,286,200,OK
+arXiv stat.ML,https://arxiv.org/rss/stat.ML,ai-dev,YES,24,39,200,OK
+Product Hunt,https://www.producthunt.com/feed,ai-dev,YES,9,50,200,OK
+ByteByteGo,https://blog.bytebytego.com/feed,ai-dev,YES,1,20,200,OK
+Hacker News Front Page,https://hnrss.org/frontpage,ai-dev,YES,20,20,200,OK
+The Hacker News,https://feeds.feedburner.com/TheHackersNews,security,YES,7,50,200,OK
+Krebs on Security,https://krebsonsecurity.com/feed/,security,SLOW,0,10,200,"feed ok, no recent articles"
+Dark Reading,https://www.darkreading.com/rss.xml,security,YES,2,50,200,OK
+Palo Alto Unit 42,https://unit42.paloaltonetworks.com/feed/,security,YES,2,15,200,OK
+Wiz Blog,https://www.wiz.io/blog/rss.xml,security,NO,0,0,404,No public RSS feed available
+Sophos (Naked Security),https://nakedsecurity.sophos.com/feed/,security,NO,0,0,timeout,"Naked Security blog defunct, no replacement found"
+Threatpost,https://threatpost.com/feed/,security,SLOW,0,10,200,"feed ok, no recent articles"
+Infosecurity Magazine,https://www.infosecurity-magazine.com/rss/news/,security,YES,5,250,200,OK
+Microsoft Security,https://api.msrc.microsoft.com/update-guide/rss,security,YES,37,3102,200,OK
+The Verge Security,https://www.theverge.com/rss/cyber-security/index.xml,security,SLOW,0,10,200,"feed ok, no recent articles"

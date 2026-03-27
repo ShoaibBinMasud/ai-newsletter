@@ -1,0 +1,999 @@
+{
+  "run_at": "2026-03-19T22:24:14.561955+00:00",
+  "feed_count": 41,
+  "total_articles": 92,
+  "failed_feeds": [
+    "Anthropic News",
+    "Google DeepMind",
+    "Google Research",
+    "Microsoft AI",
+    "Apple ML",
+    "Berkeley AI (BAIR)",
+    "CMU ML Blog",
+    "The Verge AI",
+    "VentureBeat",
+    "Reuters Tech",
+    "WSJ Tech",
+    "Databricks Blog",
+    "Snowflake Blog",
+    "AWS DevOps",
+    "Meta Engineering",
+    "Pinecone Blog",
+    "Nanonets Blog",
+    "Kubernetes Blog",
+    "HashiCorp Blog",
+    "Krebs on Security",
+    "Wiz Blog",
+    "Sophos Blog",
+    "Threatpost"
+  ],
+  "feeds": [
+    {
+      "feed_name": "OpenAI Blog",
+      "feed_url": "https://openai.com/news/rss.xml",
+      "sector": "ai-updates",
+      "status": "ok",
+      "article_count": 2,
+      "articles": [
+        {
+          "title": "How we monitor internal coding agents for misalignment",
+          "url": "https://openai.com/index/how-we-monitor-internal-coding-agents-misalignment",
+          "published_at": "2026-03-19T10:00:00+00:00",
+          "rss_summary": "How OpenAI uses chain-of-thought monitoring to study misalignment in internal coding agents—analyzing real-world deployments to detect risks and strengthen AI safety safeguards.",
+          "scraped": null
+        },
+        {
+          "title": "OpenAI to acquire Astral",
+          "url": "https://openai.com/index/openai-to-acquire-astral",
+          "published_at": "2026-03-19T00:00:00+00:00",
+          "rss_summary": "Accelerates Codex growth to power the next generation of Python developer tools",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Anthropic News",
+      "feed_url": "https://www.anthropic.com/news",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Google DeepMind",
+      "feed_url": "https://deepmind.google/blog/rss.xml",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Google Research",
+      "feed_url": "https://research.google/blog/rss/",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Microsoft AI",
+      "feed_url": "https://blogs.microsoft.com/ai/feed",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Apple ML",
+      "feed_url": "https://machinelearning.apple.com/rss.xml",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "NVIDIA Blog",
+      "feed_url": "https://feeds.feedburner.com/nvidiablog",
+      "sector": "ai-updates",
+      "status": "ok",
+      "article_count": 1,
+      "articles": [
+        {
+          "title": "Smooth Moves: 90 Frames-Per-Second Virtual Reality Arrives on GeForce NOW",
+          "url": "https://blogs.nvidia.com/blog/geforce-now-thursday-virtual-reality-update/",
+          "published_at": "2026-03-19T13:00:09+00:00",
+          "rss_summary": "It’s a double feature on GFN Thursday. This week, GeForce NOW offers smoother sights in virtual reality (VR) and a sprawling new land to conquer. Streaming at 90 frames per second (fps) comes to supported VR headsets. And Crimson Desert, which recently surpassed 3 million wishlist additions on Steam",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "MIT AI News",
+      "feed_url": "https://news.mit.edu/rss/topic/artificial-intelligence2",
+      "sector": "ai-updates",
+      "status": "ok",
+      "article_count": 2,
+      "articles": [
+        {
+          "title": "Generative AI improves a wireless vision system that sees through obstructions",
+          "url": "https://news.mit.edu/2026/generative-ai-improves-wireless-vision-system-sees-through-obstructions-0319",
+          "published_at": "2026-03-19T04:00:00+00:00",
+          "rss_summary": "With this new technique, a robot could more accurately detect hidden objects or understand an indoor scene using reflected Wi-Fi signals.",
+          "scraped": null
+        },
+        {
+          "title": "A better method for identifying overconfident large language models",
+          "url": "https://news.mit.edu/2026/better-method-identifying-overconfident-large-language-models-0319",
+          "published_at": "2026-03-19T04:00:00+00:00",
+          "rss_summary": "This new metric for measuring uncertainty could flag hallucinations and help users know whether to trust an AI model.",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Berkeley AI (BAIR)",
+      "feed_url": "https://bair.berkeley.edu/blog/feed.xml",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "CMU ML Blog",
+      "feed_url": "https://blog.ml.cmu.edu/feed",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "AI News",
+      "feed_url": "https://www.artificialintelligence-news.com/feed/",
+      "sector": "ai-updates",
+      "status": "ok",
+      "article_count": 2,
+      "articles": [
+        {
+          "title": "Visa prepares payment systems for AI agent-initiated transactions",
+          "url": "https://www.artificialintelligence-news.com/news/visa-prepares-payment-systems-for-ai-agent-initiated-transactions/",
+          "published_at": "2026-03-19T10:00:00+00:00",
+          "rss_summary": "Payments rely on a simple model: a person decides to buy something, and a bank or card network processes the transaction. That model is starting to change as Visa tests how AI agents can initiate payments. New work in the banking sector suggests that, in some cases, software agents may soon take on ",
+          "scraped": null
+        },
+        {
+          "title": "NVIDIA wants enterprise AI agents safer to deploy",
+          "url": "https://www.artificialintelligence-news.com/news/nvidia-agent-toolkit-enterprise-ai-agents/",
+          "published_at": "2026-03-19T08:00:00+00:00",
+          "rss_summary": "The NVIDIA Agent Toolkit is Jensen Huang’s answer to the question enterprises keep asking: how do we put AI agents to work without losing control of our data and our liability? Announced at GTC 2026 in San Jose on March 16, the NVIDIA Agent Toolkit is an open-source software stack designed to help e",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "The Verge AI",
+      "feed_url": "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml",
+      "sector": "ai-updates",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Ars Technica",
+      "feed_url": "https://feeds.arstechnica.com/arstechnica/index",
+      "sector": "ai-updates",
+      "status": "ok",
+      "article_count": 12,
+      "articles": [
+        {
+          "title": "Cloud service providers ask EU regulator to reinstate VMware partner program",
+          "url": "https://arstechnica.com/information-technology/2026/03/cloud-service-providers-ask-eu-regulator-to-reinstate-vmware-partner-program/",
+          "published_at": "2026-03-19T21:29:53+00:00",
+          "rss_summary": "Broadcom says the group is misrepresenting market \"realities.\"",
+          "scraped": null
+        },
+        {
+          "title": "Millions of iPhones can be hacked with a new tool found in the wild",
+          "url": "https://arstechnica.com/security/2026/03/hundreds-of-millions-of-iphones-can-be-hacked-with-a-new-tool-found-in-the-wild/",
+          "published_at": "2026-03-19T20:11:36+00:00",
+          "rss_summary": "DarkSword, a powerful iPhone-hacking technique, has been discovered in use by Russian hackers.",
+          "scraped": null
+        },
+        {
+          "title": "FBI started buying Americans' location data again, Kash Patel confirms",
+          "url": "https://arstechnica.com/tech-policy/2026/03/fbi-started-buying-americans-location-data-again-kash-patel-confirms/",
+          "published_at": "2026-03-19T19:57:35+00:00",
+          "rss_summary": "Tom Cotton supports FBI data purchasing, compares it to searching people's trash.",
+          "scraped": null
+        },
+        {
+          "title": "Dogfighting in space won't look like the movies, but this company wants in on it",
+          "url": "https://arstechnica.com/space/2026/03/dogfighting-in-space-this-company-builds-satellites-for-high-tempo-engagement/",
+          "published_at": "2026-03-19T19:45:22+00:00",
+          "rss_summary": "\"Where we are today in space warfare is very similar to where air superiority was in the 1930s.\"",
+          "scraped": null
+        },
+        {
+          "title": "OpenAI is acquiring open source Python tool-maker Astral",
+          "url": "https://arstechnica.com/ai/2026/03/openai-is-acquiring-open-source-python-tool-maker-astral/",
+          "published_at": "2026-03-19T18:44:58+00:00",
+          "rss_summary": "Codex maker says it will \"continue to support these open source projects\" after deal closes.",
+          "scraped": null
+        },
+        {
+          "title": "Meta decides not to kill Horizon Worlds VR after all",
+          "url": "https://arstechnica.com/gadgets/2026/03/at-the-last-minute-meta-decides-not-to-kill-horizon-worlds-vr-after-all/",
+          "published_at": "2026-03-19T17:50:40+00:00",
+          "rss_summary": "VR will be on life support while mobile remains the focus, though.",
+          "scraped": null
+        },
+        {
+          "title": "Afroman keeps trolling cops after winning “Lemon Pound Cake” defamation case",
+          "url": "https://arstechnica.com/tech-policy/2026/03/afroman-keeps-trolling-cops-after-winning-lemon-pound-cake-defamation-case/",
+          "published_at": "2026-03-19T17:45:28+00:00",
+          "rss_summary": "Cops asked the jury for millions after Afroman used raid footage in music videos.",
+          "scraped": null
+        },
+        {
+          "title": "Google details new 24-hour process to sideload unverified Android apps",
+          "url": "https://arstechnica.com/gadgets/2026/03/google-details-new-24-hour-process-to-sideload-unverified-android-apps/",
+          "published_at": "2026-03-19T17:28:26+00:00",
+          "rss_summary": "The \"advanced flow\" will be available before verification enforcement begins later this year.",
+          "scraped": null
+        },
+        {
+          "title": "Despite hardware limits, Parallels supports running Windows on MacBook Neo",
+          "url": "https://arstechnica.com/gadgets/2026/03/despite-hardware-limits-parallels-supports-running-windows-on-macbook-neo/",
+          "published_at": "2026-03-19T16:50:10+00:00",
+          "rss_summary": "\"8GB unified memory is the minimum practical configuration.\"",
+          "scraped": null
+        },
+        {
+          "title": "Counter-Strike 2’s new reload system could upend the entire game",
+          "url": "https://arstechnica.com/gaming/2026/03/after-25-years-valve-reworks-counter-strikes-reload-system/",
+          "published_at": "2026-03-19T15:59:58+00:00",
+          "rss_summary": "Full-magazine reloads throw out muscle memory in favor of \"higher stakes\" decisions.",
+          "scraped": null
+        },
+        {
+          "title": "Study pinpoints when bow and arrow came to North America",
+          "url": "https://arstechnica.com/science/2026/03/study-pinpoints-when-bow-and-arrow-came-to-north-america/",
+          "published_at": "2026-03-19T15:45:33+00:00",
+          "rss_summary": "Radiocarbon results suggest a single origin and rapid diffusion through cultural transition networks.",
+          "scraped": null
+        },
+        {
+          "title": "TCL’s German QLED ban puts pressure on TV brands to be more honest about QDs",
+          "url": "https://arstechnica.com/gadgets/2026/03/tcls-german-qled-ban-puts-pressure-on-tv-brands-to-be-more-honest-about-qds/",
+          "published_at": "2026-03-19T11:00:46+00:00",
+          "rss_summary": "\"This is a serious warning shot.\"",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "MIT Tech Review",
+      "feed_url": "https://www.technologyreview.com/feed/",
+      "sector": "ai-updates",
+      "status": "ok",
+      "article_count": 3,
+      "articles": [
+        {
+          "title": "The Download: Quantum computing for health, and why the world doesn’t recycle more nuclear waste",
+          "url": "https://www.technologyreview.com/2026/03/19/1134413/the-download-quantum-computing-health-recycling-nuclear-waste/",
+          "published_at": "2026-03-19T12:17:02+00:00",
+          "rss_summary": "This is today’s edition of The Download, our weekday newsletter that provides a daily dose of what’s going on in the world of technology. A $5 million prize awaits proof that quantum computers can solve health care problems In a laboratory on the outskirts of Oxford, a quantum computer built from at",
+          "scraped": null
+        },
+        {
+          "title": "Can quantum computers now solve health care problems? We’ll soon find out.",
+          "url": "https://www.technologyreview.com/2026/03/19/1134409/a-5-million-prize-awaits-proof-that-quantum-computers-can-solve-health-care-problems/",
+          "published_at": "2026-03-19T10:51:43+00:00",
+          "rss_summary": "I’m standing in front of a quantum computer built out of atoms and light at the UK’s National Quantum Computing Centre on the outskirts of Oxford. On a laboratory table, a complex matrix of mirrors and lenses surrounds a Rubik’s Cube–size cell where 100 cesium atoms are suspended in grid formation b",
+          "scraped": null
+        },
+        {
+          "title": "Why the world doesn’t recycle more nuclear waste",
+          "url": "https://www.technologyreview.com/2026/03/19/1134399/nuclear-waste-reprocessing/",
+          "published_at": "2026-03-19T10:00:00+00:00",
+          "rss_summary": "The prospect of making trash useful is always fascinating to me. Whether it’s used batteries, solar panels, or spent nuclear fuel, getting use out of something destined for disposal sounds like a win all around. In nuclear energy, figuring out what to do with waste has always been a challenge, since",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "TechCrunch AI",
+      "feed_url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+      "sector": "ai-business",
+      "status": "ok",
+      "article_count": 9,
+      "articles": [
+        {
+          "title": "Jeff Bezos reportedly wants $100 billion to buy and transform old manufacturing firms with AI",
+          "url": "https://techcrunch.com/2026/03/19/jeff-bezos-reportedly-wants-100-billion-to-buy-and-transform-old-manufacturing-firms-with-ai/",
+          "published_at": "2026-03-19T22:09:24+00:00",
+          "rss_summary": "The Amazon magnate has a new project centered around acquiring industrial firms and revamping them with AI technology.",
+          "scraped": null
+        },
+        {
+          "title": "Online bot traffic will exceed human traffic by 2027, Cloudflare CEO says",
+          "url": "https://techcrunch.com/2026/03/19/online-bot-traffic-will-exceed-human-traffic-by-2027-cloudflare-ceo-says/",
+          "published_at": "2026-03-19T19:09:02+00:00",
+          "rss_summary": "AI bots may outnumber humans online by 2027, says Cloudflare CEO Matthew Prince, as generative AI agents dramatically increase web traffic and infrastructure demands.",
+          "scraped": null
+        },
+        {
+          "title": "Meta rolls out new AI content enforcement systems while reducing reliance on third-party vendors",
+          "url": "https://techcrunch.com/2026/03/19/meta-rolls-out-new-ai-content-enforcement-systems-while-reducing-reliance-on-third-party-vendors/",
+          "published_at": "2026-03-19T17:24:13+00:00",
+          "rss_summary": "Meta believes these AI systems can detect more violations with greater accuracy, better prevent scams, respond more quickly to real-world events, and reduce over-enforcement.",
+          "scraped": null
+        },
+        {
+          "title": "DoorDash launches a new ‘Tasks’ app that pays couriers to submit videos to train AI",
+          "url": "https://techcrunch.com/2026/03/19/doordash-launches-a-new-tasks-app-that-pays-couriers-to-submit-videos-to-train-ai/",
+          "published_at": "2026-03-19T16:14:00+00:00",
+          "rss_summary": "Delivery couriers will be able to earn money by completing activities like filming everyday tasks or recording themselves speaking in another language.",
+          "scraped": null
+        },
+        {
+          "title": "TechCrunch Startup Battlefield 200 nominations are still open",
+          "url": "https://techcrunch.com/2026/03/19/techcrunch-startup-battlefield-200-nominations-are-still-open/",
+          "published_at": "2026-03-19T15:00:00+00:00",
+          "rss_summary": "Nominate your startup, or one you know, for TechCrunch Startup Battlefield 200 before May 27. Chance to win $100,000 equity-free funding and VC access.",
+          "scraped": null
+        },
+        {
+          "title": "Amazon brings Alexa+ to the UK",
+          "url": "https://techcrunch.com/2026/03/19/amazon-brings-alexa-to-the-uk/",
+          "published_at": "2026-03-19T12:27:24+00:00",
+          "rss_summary": "The company is currently letting users in the U.K. try out Alexa+ for free via an early access program.",
+          "scraped": null
+        },
+        {
+          "title": "Multiverse Computing pushes its compressed AI models into the mainstream",
+          "url": "https://techcrunch.com/2026/03/19/multiverse-computing-pushes-its-compressed-ai-models-into-the-mainstream/",
+          "published_at": "2026-03-19T08:00:00+00:00",
+          "rss_summary": "After compressing models from major AI labs, including OpenAI, Meta, DeepSeek, and Mistral AI, Multiverse Computing has launched both an app that showcases the capabilities of its compressed models and an API that makes them more widely available.",
+          "scraped": null
+        },
+        {
+          "title": "Meta is having trouble with rogue AI agents",
+          "url": "https://techcrunch.com/2026/03/18/meta-is-having-trouble-with-rogue-ai-agents/",
+          "published_at": "2026-03-18T23:42:46+00:00",
+          "rss_summary": "A rogue AI agent inadvertently exposed Meta company and user data to engineers who didn't have permission to see it.",
+          "scraped": null
+        },
+        {
+          "title": "Sam Altman’s thank-you to coders draws the memes",
+          "url": "https://techcrunch.com/2026/03/18/sam-altmans-thank-you-to-coders-draws-the-memes/",
+          "published_at": "2026-03-18T23:12:58+00:00",
+          "rss_summary": "Altman expresses gratitude for people who knew how to write their code from scratch. The internet replies with salty jokes.",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "VentureBeat",
+      "feed_url": "https://venturebeat.com/category/ai/feed/",
+      "sector": "ai-business",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Reuters Tech",
+      "feed_url": "https://feeds.reuters.com/reuters/technologyNews",
+      "sector": "ai-business",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "CNBC Tech",
+      "feed_url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910",
+      "sector": "ai-business",
+      "status": "ok",
+      "article_count": 15,
+      "articles": [
+        {
+          "title": "Amazon acquires startup Rivr to test robots for 'doorstep delivery'",
+          "url": "https://www.cnbc.com/2026/03/19/amazon-acquires-startup-rivr-to-test-robots-for-doorstep-delivery.html",
+          "published_at": "2026-03-19T22:05:39+00:00",
+          "rss_summary": "The company expects to test ways it can use Rivr's robots to help with \"doorstep delivery\" and to \"improve safety outcomes\" for delivery drivers.",
+          "scraped": null
+        },
+        {
+          "title": "Apple bears are proven wrong yet again as iPhone defies the China slump narrative",
+          "url": "https://www.cnbc.com/2026/03/19/apple-bears-proven-wrong-yet-again-as-iphone-defies-china-slump-narrative.html",
+          "published_at": "2026-03-19T20:26:30+00:00",
+          "rss_summary": "Memory shortages. Way behind on AI. Tariff troubles. None of that seems to matter to Apple.",
+          "scraped": null
+        },
+        {
+          "title": "Figma's stock drops 12% in two days after Google releases 'vibe design' product",
+          "url": "https://www.cnbc.com/2026/03/19/figma-stock-drops-11percent-after-google-releases-vibe-design-product-stitch.html",
+          "published_at": "2026-03-19T20:43:19+00:00",
+          "rss_summary": "Figma's stock has been getting hammered on concerns about AI, and Google's new design product is adding to that anxiety.",
+          "scraped": null
+        },
+        {
+          "title": "Column: Jensen Huang doesn’t need a new chip. He needs a new moat.",
+          "url": "https://www.cnbc.com/2026/03/19/column-jensen-huang-doesnt-need-a-new-chip-he-needs-a-new-moat.html",
+          "published_at": "2026-03-19T19:20:59+00:00",
+          "rss_summary": "Jensen Huang is building a new moat with open-source AI — not out of generosity, but necessity, our tech columnist writes.",
+          "scraped": null
+        },
+        {
+          "title": "Meta backtracks on decision to end Horizon Worlds VR after fans speak up",
+          "url": "https://www.cnbc.com/2026/03/19/meta-backtracks-on-decision-to-end-horizon-worlds-vr-ans-spoke-up.html",
+          "published_at": "2026-03-19T18:24:26+00:00",
+          "rss_summary": "A day after announcing the Horizon Worlds would only be available on a mobile app starting in June, Meta said it changed its mind.",
+          "scraped": null
+        },
+        {
+          "title": "Eli Lilly's new shot shows solid weight loss in study — plus, a way for Nvidia to perk up",
+          "url": "https://www.cnbc.com/2026/03/19/eli-lillys-new-shot-shows-solid-weight-loss-in-study-plus-a-way-for-nvidia-to-perk-up.html",
+          "published_at": "2026-03-19T16:58:32+00:00",
+          "rss_summary": "The Investing Club holds its \"Morning Meeting\" every weekday at 10:20 a.m. ET.",
+          "scraped": null
+        },
+        {
+          "title": "Meta to cut back on third-party vendors in favor of AI for content enforcement",
+          "url": "https://www.cnbc.com/2026/03/19/meta-cut-back-third-party-vendors-favor-of-ai-for-content-enforcement.html",
+          "published_at": "2026-03-19T16:04:27+00:00",
+          "rss_summary": "Meta is beginning a multiyear rollout of more advanced AI systems that will handle content enforcement-related tasks like catching scams and illegal media.",
+          "scraped": null
+        },
+        {
+          "title": "Tesla faces intensifying NHTSA probe of 'Full Self-Driving' in reduced visibility",
+          "url": "https://www.cnbc.com/2026/03/19/tesla-nhtsa-full-self-driving-fsd-reduced-visibility.html",
+          "published_at": "2026-03-19T15:58:34+00:00",
+          "rss_summary": "The investigation involves Model S, X, 3, Y and Cybertruck EVs that can use the company's FSD-branded driver assistance systems.",
+          "scraped": null
+        },
+        {
+          "title": "OpenAI to acquire developer tooling startup Astral in boost for Codex team",
+          "url": "https://www.cnbc.com/2026/03/19/openai-to-acquire-developer-tooling-startup-astral.html",
+          "published_at": "2026-03-19T17:51:26+00:00",
+          "rss_summary": "OpenAI has made several recent acquisitions, including cybersecurity startup Promptfoo and health-care technology startup Torch.",
+          "scraped": null
+        },
+        {
+          "title": "Crypto.com lays off 12% of workforce as latest company to cite AI in job cuts",
+          "url": "https://www.cnbc.com/2026/03/19/crypto-com-layoffs-12percent-ai-job-loss.html",
+          "published_at": "2026-03-19T16:32:42+00:00",
+          "rss_summary": "CEO Kris Marszalek said the layoffs were in \"roles that do not adapt in our new world\" as the company integrates enterprise-wide AI.",
+          "scraped": null
+        },
+        {
+          "title": "The Fed decision, Micron earnings, Amazon's USPS contract and more in Morning Squawk",
+          "url": "https://www.cnbc.com/2026/03/19/5-things-to-know-before-the-market-opens.html",
+          "published_at": "2026-03-19T12:08:06+00:00",
+          "rss_summary": "Here are five key things investors need to know to start the trading day.",
+          "scraped": null
+        },
+        {
+          "title": "Uber to invest up to $1.25 billion in EV maker Rivian in deal to launch 50,000 robotaxis",
+          "url": "https://www.cnbc.com/2026/03/19/uber-rivian-robotaxi.html",
+          "published_at": "2026-03-19T20:01:16+00:00",
+          "rss_summary": "Uber plans to invest up to $1.25 billion in Rivian as part of a deal to deploy up to 50,000 robotaxis in several countries through 2031.",
+          "scraped": null
+        },
+        {
+          "title": "OpenClaw demand in China is driving up the price of used MacBooks",
+          "url": "https://www.cnbc.com/2026/03/19/openclaw-demand-in-china-is-driving-up-the-price-of-secondhand-macbooks.html",
+          "published_at": "2026-03-19T11:02:11+00:00",
+          "rss_summary": "People in China are rushing to buy preowned computers to try OpenClaw with demand for MacBooks particularly high, according to one reseller.",
+          "scraped": null
+        },
+        {
+          "title": "Alibaba revenue misses estimates in December quarter as net income drops 66%",
+          "url": "https://www.cnbc.com/2026/03/19/alibaba-december-quarter-earnings-ai-investment.html",
+          "published_at": "2026-03-19T11:52:17+00:00",
+          "rss_summary": "The tech giant is one of several Chinese AI firms that have been rushing to catch up to U.S. companies in the AI race.",
+          "scraped": null
+        },
+        {
+          "title": "Chip buyers in Europe are paying more and tapping backup stores as Iran war hits air freight",
+          "url": "https://www.cnbc.com/2026/03/19/europe-chip-buyers-iran-war.html",
+          "published_at": "2026-03-19T08:34:28+00:00",
+          "rss_summary": "The Iran war has caused turmoil to cargo routes through the Middle East, as shipping and airports have been targeted.",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "WSJ Tech",
+      "feed_url": "https://feeds.a.dj.com/rss/RSSWSJD.xml",
+      "sector": "ai-business",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Meta News",
+      "feed_url": "https://about.fb.com/feed",
+      "sector": "ai-business",
+      "status": "ok",
+      "article_count": 1,
+      "articles": [
+        {
+          "title": "Boosting Your Support and Safety on Meta’s Apps With AI",
+          "url": "https://about.fb.com/news/2026/03/boosting-your-support-and-safety-on-metas-apps-with-ai/",
+          "published_at": "2026-03-19T16:00:55+00:00",
+          "rss_summary": "We’re launching new AI tools for support and content enforcement on our apps to make them work better for you. The post Boosting Your Support and Safety on Meta’s Apps With AI appeared first on Meta Newsroom .",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Databricks Blog",
+      "feed_url": "https://www.databricks.com/blog/feed",
+      "sector": "ai-business",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Snowflake Blog",
+      "feed_url": "https://www.snowflake.com/blog/feed/",
+      "sector": "ai-business",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Hugging Face Blog",
+      "feed_url": "https://huggingface.co/blog/feed.xml",
+      "sector": "ai-dev",
+      "status": "ok",
+      "article_count": 1,
+      "articles": [
+        {
+          "title": "**Introducing SPEED-Bench: A Unified and Diverse Benchmark for Speculative Decoding**",
+          "url": "https://huggingface.co/blog/nvidia/speed-bench",
+          "published_at": "2026-03-19T14:04:54+00:00",
+          "rss_summary": "",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Towards Data Science",
+      "feed_url": "https://towardsdatascience.com/feed",
+      "sector": "ai-dev",
+      "status": "ok",
+      "article_count": 4,
+      "articles": [
+        {
+          "title": "The Basics of Vibe Engineering",
+          "url": "https://towardsdatascience.com/the-basics-of-vibe-engineering/",
+          "published_at": "2026-03-19T16:30:00+00:00",
+          "rss_summary": "Building products without the coding part The post The Basics of Vibe Engineering appeared first on Towards Data Science .",
+          "scraped": null
+        },
+        {
+          "title": "Beyond Prompt Caching: 5 More Things You Should Cache in RAG Pipelines",
+          "url": "https://towardsdatascience.com/beyond-prompt-caching-5-more-things-you-should-cache-in-rag-pipelines/",
+          "published_at": "2026-03-19T15:00:00+00:00",
+          "rss_summary": "A practical guide to caching layers across the RAG pipeline, from query embeddings to full query-response reuse The post Beyond Prompt Caching: 5 More Things You Should Cache in RAG Pipelines appeared first on Towards Data Science .",
+          "scraped": null
+        },
+        {
+          "title": "Linear Regression Is Actually a Projection Problem, Part 1: The Geometric Intuition",
+          "url": "https://towardsdatascience.com/linear-regression-is-actually-a-projection-problem-part-1-the-geometric-intuition/",
+          "published_at": "2026-03-19T13:30:00+00:00",
+          "rss_summary": "A visual guide to vectors and projections The post Linear Regression Is Actually a Projection Problem, Part 1: The Geometric Intuition appeared first on Towards Data Science .",
+          "scraped": null
+        },
+        {
+          "title": "Vibe Coding with AI: Best Practices for Human-AI Collaboration in Software Development",
+          "url": "https://towardsdatascience.com/vibe-coding-with-ai-best-practices-for-human-ai-collaboration-in-software-development/",
+          "published_at": "2026-03-19T12:00:00+00:00",
+          "rss_summary": "Accelerate coding with AI while staying in control and building reliable, production-ready software. The post Vibe Coding with AI: Best Practices for Human-AI Collaboration in Software Development appeared first on Towards Data Science .",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "NVIDIA Developer",
+      "feed_url": "https://developer.nvidia.com/blog/feed",
+      "sector": "ai-dev",
+      "status": "ok",
+      "article_count": 4,
+      "articles": [
+        {
+          "title": "Run Autonomous, Self-Evolving Agents More Safely with NVIDIA OpenShell",
+          "url": "https://developer.nvidia.com/blog/run-autonomous-self-evolving-agents-more-safely-with-nvidia-openshell/",
+          "published_at": "2026-03-19T16:10:00+00:00",
+          "rss_summary": "AI has evolved from assistants following your directions to agents that act independently. Called claws, these agents can take a goal, figure out how to achieve...",
+          "scraped": null
+        },
+        {
+          "title": "Inside NVIDIA Groq 3 LPX: The Low-Latency Inference Accelerator for the NVIDIA Vera Rubin Platform",
+          "url": "https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/",
+          "published_at": "2026-03-19T16:09:00+00:00",
+          "rss_summary": "NVIDIA Groq 3 LPX is a new rack-scale inference accelerator for the NVIDIA Vera Rubin platform, designed for the low-latency and large-context demands of...",
+          "scraped": null
+        },
+        {
+          "title": "NVIDIA Vera Rubin POD: Seven Chips, Five Rack-Scale Systems, One AI Supercomputer",
+          "url": "https://developer.nvidia.com/blog/nvidia-vera-rubin-pod-seven-chips-five-rack-scale-systems-one-ai-supercomputer/",
+          "published_at": "2026-03-19T16:05:58+00:00",
+          "rss_summary": "Artificial intelligence is token-driven. Every prompt, reasoning step, and agent interaction generates tokens. Over the past year, token consumption has grown...",
+          "scraped": null
+        },
+        {
+          "title": "Newton Adds Contact-Rich Manipulation and Locomotion Capabilities for Industrial Robotics",
+          "url": "https://developer.nvidia.com/blog/newton-adds-contact-rich-manipulation-and-locomotion-capabilities-for-industrial-robotics/",
+          "published_at": "2026-03-19T16:00:50+00:00",
+          "rss_summary": "Physics forms the foundation of robotic simulation, enabling realistic modeling of motion and interaction. For tasks like locomotion and manipulation,...",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "AWS Machine Learning",
+      "feed_url": "https://aws.amazon.com/blogs/machine-learning/feed/",
+      "sector": "ai-dev",
+      "status": "ok",
+      "article_count": 5,
+      "articles": [
+        {
+          "title": "Run NVIDIA Nemotron 3 Super on Amazon Bedrock",
+          "url": "https://aws.amazon.com/blogs/machine-learning/run-nvidia-nemotron-3-super-on-amazon-bedrock/",
+          "published_at": "2026-03-19T17:25:44+00:00",
+          "rss_summary": "This post explores the technical characteristics of the Nemotron 3 Super model and discusses potential application use cases. It also provides technical guidance to get started using this model for your generative AI applications within the Amazon Bedrock environment.",
+          "scraped": null
+        },
+        {
+          "title": "Use RAG for video generation using Amazon Bedrock and Amazon Nova Reel",
+          "url": "https://aws.amazon.com/blogs/machine-learning/use-rag-for-video-generation-using-amazon-bedrock-and-amazon-nova-reel/",
+          "published_at": "2026-03-19T16:45:50+00:00",
+          "rss_summary": "In this post, we explore our approach to video generation through VRAG, transforming natural language text prompts and images into grounded, high-quality videos. Through this fully automated solution, you can generate realistic, AI-powered video sequences from structured text and image inputs, strea",
+          "scraped": null
+        },
+        {
+          "title": "Introducing V-RAG: revolutionizing AI-powered video production with Retrieval Augmented Generation",
+          "url": "https://aws.amazon.com/blogs/machine-learning/introducing-v-rag-revolutionizing-ai-powered-video-production-with-retrieval-augmented-generation/",
+          "published_at": "2026-03-19T16:45:42+00:00",
+          "rss_summary": "This post introduces Video Retrieval-Augmented Generation (V-RAG), an approach to help improve video content creation. By combining retrieval augmented generation with advanced video AI models, V-RAG offers an efficient, and reliable solution for generating AI videos.",
+          "scraped": null
+        },
+        {
+          "title": "Enhanced metrics for Amazon SageMaker AI endpoints: deeper visibility for better performance",
+          "url": "https://aws.amazon.com/blogs/machine-learning/enhanced-metrics-for-amazon-sagemaker-ai-endpoints-deeper-visibility-for-better-performance/",
+          "published_at": "2026-03-19T14:32:11+00:00",
+          "rss_summary": "SageMaker AI endpoints now support enhanced metrics with configurable publishing frequency. This launch provides the granular visibility needed to monitor, troubleshoot, and improve your production endpoints.",
+          "scraped": null
+        },
+        {
+          "title": "Enforce data residency with Amazon Quick extensions for Microsoft Teams",
+          "url": "https://aws.amazon.com/blogs/machine-learning/enforce-data-residency-with-amazon-quick-extensions-for-microsoft-teams/",
+          "published_at": "2026-03-19T14:20:04+00:00",
+          "rss_summary": "In this post, we will show you how to enforce data residency when deploying Amazon Quick Microsoft Teams extensions across multiple AWS Regions. You will learn how to configure multi-Region Amazon Quick extensions that automatically route users to AWS Region-appropriate resources, helping keep compl",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "AWS DevOps",
+      "feed_url": "https://aws.amazon.com/blogs/devops/feed/",
+      "sector": "ai-dev",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Meta Engineering",
+      "feed_url": "https://engineering.fb.com/feed",
+      "sector": "ai-dev",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Pinecone Blog",
+      "feed_url": "https://www.pinecone.io/blog/rss.xml",
+      "sector": "ai-dev",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Nanonets Blog",
+      "feed_url": "https://nanonets.com/blog/rss",
+      "sector": "ai-dev",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Kubernetes Blog",
+      "feed_url": "https://kubernetes.io/feed.xml",
+      "sector": "ai-dev",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "HashiCorp Blog",
+      "feed_url": "https://www.hashicorp.com/blog/feed.xml",
+      "sector": "ai-dev",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "The Hacker News",
+      "feed_url": "https://feeds.feedburner.com/TheHackersNews",
+      "sector": "security",
+      "status": "ok",
+      "article_count": 7,
+      "articles": [
+        {
+          "title": "Speagle Malware Hijacks Cobra DocGuard to Steal Data via Compromised Servers",
+          "url": "https://thehackernews.com/2026/03/speagle-malware-hijacks-cobra-docguard.html",
+          "published_at": "2026-03-19T19:16:00+00:00",
+          "rss_summary": "Cybersecurity researchers have flagged a new malware dubbed Speagle that hijacks the functionality and infrastructure of a legitimate program called Cobra DocGuard. \"Speagle is designed to surreptitiously harvest sensitive information from infected computers and transmit it to a Cobra DocGuard serve",
+          "scraped": null
+        },
+        {
+          "title": "54 EDR Killers Use BYOVD to Exploit 34 Signed Vulnerable Drivers and Disable Security",
+          "url": "https://thehackernews.com/2026/03/54-edr-killers-use-byovd-to-exploit-34.html",
+          "published_at": "2026-03-19T18:52:00+00:00",
+          "rss_summary": "A new analysis of endpoint detection and response (EDR) killers has revealed that 54 of them leverage a technique known as bring your own vulnerable driver (BYOVD) by abusing a total of 34 vulnerable drivers. EDR killer programs have been a common presence in ransomware intrusions as they offer a wa",
+          "scraped": null
+        },
+        {
+          "title": "ThreatsDay Bulletin: FortiGate RaaS, Citrix Exploits, MCP Abuse, LiveChat Phish & More",
+          "url": "https://thehackernews.com/2026/03/threatsday-bulletin-fortigate-raas.html",
+          "published_at": "2026-03-19T14:25:00+00:00",
+          "rss_summary": "ThreatsDay Bulletin is back on The Hacker News, and this week feels off in a familiar way. Nothing loud, nothing breaking everything at once. Just a lot of small things that shouldn’t work anymore but still do. Some of it looks simple, almost sloppy, until you see how well it lands. Other bits feel ",
+          "scraped": null
+        },
+        {
+          "title": "New Perseus Android Banking Malware Monitors Notes Apps to Extract Sensitive Data",
+          "url": "https://thehackernews.com/2026/03/new-perseus-android-banking-malware.html",
+          "published_at": "2026-03-19T12:43:00+00:00",
+          "rss_summary": "Cybersecurity researchers have disclosed a new Android malware family called Perseus that's being actively distributed in the wild with an aim to conduct device takeover (DTO) and financial fraud. Perseus is built upon the foundations of Cerberus and Phoenix, at the same time evolving into a \"more f",
+          "scraped": null
+        },
+        {
+          "title": "How Ceros Gives Security Teams Visibility and Control in Claude Code",
+          "url": "https://thehackernews.com/2026/03/how-ceros-gives-security-teams.html",
+          "published_at": "2026-03-19T10:58:00+00:00",
+          "rss_summary": "Security teams have spent years building identity and access controls for human users and service accounts. But a new category of actor has quietly entered most enterprise environments, and it operates entirely outside those controls. Claude Code, Anthropic's AI coding agent, is now running across e",
+          "scraped": null
+        },
+        {
+          "title": "DarkSword iOS Exploit Kit Uses 6 Flaws, 3 Zero-Days for Full Device Takeover",
+          "url": "https://thehackernews.com/2026/03/darksword-ios-exploit-kit-uses-6-flaws.html",
+          "published_at": "2026-03-19T09:14:00+00:00",
+          "rss_summary": "A new exploit kit for Apple iOS devices designed to steal sensitive data from is being wielded by multiple threat actors since at least November 2025, according to reports from Google Threat Intelligence Group (GTIG), iVerify, and Lookout. According to GTIG, multiple commercial surveillance vendors ",
+          "scraped": null
+        },
+        {
+          "title": "CISA Warns of Zimbra, SharePoint Flaw Exploits; Cisco Zero-Day Hit in Ransomware Attacks",
+          "url": "https://thehackernews.com/2026/03/cisa-warns-of-zimbra-sharepoint-flaw.html",
+          "published_at": "2026-03-19T06:05:00+00:00",
+          "rss_summary": "The U.S. Cybersecurity and Infrastructure Security Agency (CISA) has urged government agencies to apply patches for two security flaws impacting Synacor Zimbra Collaboration Suite (ZCS) and Microsoft Office SharePoint, stating they have been actively exploited in the wild. The vulnerabilities in que",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Krebs on Security",
+      "feed_url": "https://krebsonsecurity.com/feed/",
+      "sector": "security",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Dark Reading",
+      "feed_url": "https://www.darkreading.com/rss.xml",
+      "sector": "security",
+      "status": "ok",
+      "article_count": 2,
+      "articles": [
+        {
+          "title": "AI Conundrum: Why MCP Security Can't Be Patched Away",
+          "url": "https://www.darkreading.com/application-security/mcp-security-patched",
+          "published_at": "2026-03-19T21:54:38+00:00",
+          "rss_summary": "MCP introduces security risks into LLM environments that are architectural and not easily fixable, researcher says at RSAC 2026 Conference.",
+          "scraped": null
+        },
+        {
+          "title": "EU Sanctions Companies in China, Iran for Cyberattacks",
+          "url": "https://www.darkreading.com/threat-intelligence/eu-sanctions-companies-china-iran-cyberattacks",
+          "published_at": "2026-03-19T07:01:00+00:00",
+          "rss_summary": "These rulings prohibit the entities from entering or doing business in the European Union.",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Palo Alto Unit 42",
+      "feed_url": "https://unit42.paloaltonetworks.com/feed/",
+      "sector": "security",
+      "status": "ok",
+      "article_count": 2,
+      "articles": [
+        {
+          "title": "Analyzing the Current State of AI Use in Malware",
+          "url": "https://unit42.paloaltonetworks.com/ai-use-in-malware/",
+          "published_at": "2026-03-19T10:00:01+00:00",
+          "rss_summary": "Unit 42 research explores how AI is currently used in malware, from superficial integrations to advanced decision-making, and its future impact. The post Analyzing the Current State of AI Use in Malware appeared first on Unit 42 .",
+          "scraped": null
+        },
+        {
+          "title": "Navigating Security Tradeoffs of AI Agents",
+          "url": "https://unit42.paloaltonetworks.com/navigating-security-tradeoffs-ai-agents/",
+          "published_at": "2026-03-18T23:00:28+00:00",
+          "rss_summary": "Unit 42 outlines the risks of AI ecosystems and allowing AI agents excessive privileges. Learn how to keep your security strategy up to date with these latest trends. The post Navigating Security Tradeoffs of AI Agents appeared first on Unit 42 .",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Wiz Blog",
+      "feed_url": "https://www.wiz.io/blog/rss.xml",
+      "sector": "security",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Sophos Blog",
+      "feed_url": "https://nakedsecurity.sophos.com/feed/",
+      "sector": "security",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Threatpost",
+      "feed_url": "https://threatpost.com/feed/",
+      "sector": "security",
+      "status": "no_articles",
+      "articles": []
+    },
+    {
+      "feed_name": "Infosecurity Magazine",
+      "feed_url": "https://www.infosecurity-magazine.com/rss/news/",
+      "sector": "security",
+      "status": "ok",
+      "article_count": 5,
+      "articles": [
+        {
+          "title": "Ransomware Affiliate Exposes Details of 'The Gentlemen' Operation",
+          "url": "https://www.infosecurity-magazine.com/news/ransomware-affiliate-gentlemen/",
+          "published_at": "2026-03-19T16:00:00+00:00",
+          "rss_summary": "Hastalamuerte leaks The Gentlemen RaaS ops: FortiGate exploits, BYOVD evasion, Qilin split tactics",
+          "scraped": null
+        },
+        {
+          "title": "Financial Brands Targeted in Global Mobile Banking Malware Surge",
+          "url": "https://www.infosecurity-magazine.com/news/financial-brands-mobile-banking/",
+          "published_at": "2026-03-19T14:30:00+00:00",
+          "rss_summary": "Mobile banking malware targets over 1200 financial apps globally, shifting fraud to user devices",
+          "scraped": null
+        },
+        {
+          "title": "FCA Updates Cyber Incident and Third-Party Reporting Rules",
+          "url": "https://www.infosecurity-magazine.com/news/fca-updates-incident-thirdparty/",
+          "published_at": "2026-03-19T10:30:00+00:00",
+          "rss_summary": "The UK’s financial regulator has issued new rules to make incident and third-party reporting clearer",
+          "scraped": null
+        },
+        {
+          "title": "AWS Warns Hackers Have Abused Cisco Firewall Zero-Day Since January",
+          "url": "https://www.infosecurity-magazine.com/news/interlock-ransomware-exploit-cisco/",
+          "published_at": "2026-03-19T09:50:00+00:00",
+          "rss_summary": "Notorious ransomware group Interlock has been exploiting a Cisco zero-day bug since January, AWS says",
+          "scraped": null
+        },
+        {
+          "title": "UK: Regulation Drives Cyber Spending for Critical Infrastructure Orgs",
+          "url": "https://www.infosecurity-magazine.com/news/uk-regulation-drives-cyber/",
+          "published_at": "2026-03-19T09:00:00+00:00",
+          "rss_summary": "35% of security leaders working in the UK’s critical infrastructure said regulatory requirements are the primary influence on their security programs",
+          "scraped": null
+        }
+      ]
+    },
+    {
+      "feed_name": "Microsoft Security",
+      "feed_url": "https://api.msrc.microsoft.com/update-guide/rss",
+      "sector": "security",
+      "status": "ok",
+      "article_count": 15,
+      "articles": [
+        {
+          "title": "CVE-2026-32169 Azure Cloud Shell Elevation of Privilege Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-32169",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Server-side request forgery (ssrf) in Azure Cloud Shell allows an unauthorized attacker to elevate privileges over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-26139 Microsoft Purview Elevation of Privilege Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-26139",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Server-side request forgery (ssrf) in Microsoft Purview allows an unauthorized attacker to elevate privileges over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-26138 Microsoft Purview Elevation of Privilege Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-26138",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Server-side request forgery (ssrf) in Microsoft Purview allows an unauthorized attacker to elevate privileges over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-32191 Microsoft Bing Images Remote Code Execution Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-32191",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Improper neutralization of special elements used in an os command ('os command injection') in Microsoft Bing Images allows an unauthorized attacker to execute code over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-23658 Azure DevOps: msazure Elevation of Privilege Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-23658",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Insufficiently protected credentials in Azure DevOps allows an unauthorized attacker to elevate privileges over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-26120 Microsoft Bing Tampering Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-26120",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Server-side request forgery (ssrf) in Microsoft Bing allows an unauthorized attacker to perform tampering over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-23659 Azure Data Factory Information Disclosure Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-23659",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Exposure of sensitive information to an unauthorized actor in Azure Data Factory allows an unauthorized attacker to disclose information over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-24299 M365 Copilot Information Disclosure Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-24299",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Improper neutralization of special elements used in a command ('command injection') in M365 Copilot allows an unauthorized attacker to disclose information over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-26136 Microsoft Copilot Information Disclosure Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-26136",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Improper neutralization of special elements used in a command ('command injection') in Microsoft Copilot allows an unauthorized attacker to disclose information over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-26137 Microsoft 365 Copilot BizChat Elevation of Privilege Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-26137",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Server-side request forgery (ssrf) in Microsoft 365 Copilot's Business Chat allows an authorized attacker to elevate privileges over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-32194 Microsoft Bing Images Remote Code Execution Vulnerability",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-32194",
+          "published_at": "2026-03-19T14:00:00+00:00",
+          "rss_summary": "Improper neutralization of special elements used in a command ('command injection') in Microsoft Bing Images allows an unauthorized attacker to execute code over a network.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-23234 f2fs: fix to avoid UAF in f2fs_write_end_io()",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-23234",
+          "published_at": "2026-03-19T08:02:47+00:00",
+          "rss_summary": "Information published.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-23235 f2fs: fix out-of-bounds access in sysfs attribute read/write",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-23235",
+          "published_at": "2026-03-19T08:02:52+00:00",
+          "rss_summary": "Information published.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-23237 platform/x86: classmate-laptop: Add missing NULL pointer checks",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-23237",
+          "published_at": "2026-03-19T08:03:02+00:00",
+          "rss_summary": "Information published.",
+          "scraped": null
+        },
+        {
+          "title": "CVE-2026-23238 romfs: check sb_set_blocksize() return value",
+          "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-23238",
+          "published_at": "2026-03-19T08:03:07+00:00",
+          "rss_summary": "Information published.",
+          "scraped": null
+        }
+      ]
+    }
+  ]
+}
