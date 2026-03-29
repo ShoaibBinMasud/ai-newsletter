@@ -36,9 +36,11 @@ load_dotenv()
 from db.storage import get_db_path
 from config import TOP_STORY_COUNT, OPENER_MODEL, OPENER_TEMPERATURE
 
-SPONSOR_NAME = os.getenv("SPONSOR_NAME", "")
-SPONSOR_TEXT = os.getenv("SPONSOR_TEXT", "")
-SPONSOR_URL  = os.getenv("SPONSOR_URL", "")
+SPONSOR_NAME    = os.getenv("SPONSOR_NAME", "")
+SPONSOR_TEXT    = os.getenv("SPONSOR_TEXT", "")
+SPONSOR_URL     = os.getenv("SPONSOR_URL", "")
+UNSUBSCRIBE_URL = os.getenv("UNSUBSCRIBE_URL", "")
+SITE_URL        = os.getenv("SITE_URL", "")
 
 # Keep CATEGORY_ORDER and CATEGORY_META for backward compatibility (used by main.py)
 CATEGORY_META = {
@@ -217,11 +219,25 @@ def _company_tag_badge(tag: str) -> str:
     )
 
 
+def _category_badge(category: str) -> str:
+    """Render a colored category badge."""
+    if not category or category not in CATEGORY_META:
+        return ""
+    meta = CATEGORY_META[category]
+    return (
+        f'<span style="display:inline-block;background-color:{meta["color"]};color:white;'
+        f'padding:3px 8px;border-radius:3px;font-family:Helvetica,Arial,sans-serif;'
+        f'font-size:10px;font-weight:700;margin-left:4px;">'
+        f'{meta["emoji"]} {_esc(meta["label"])}</span>'
+    )
+
+
 def _top_story_card(a: dict) -> str:
-    """Render a top story with full Rundown-style treatment."""
+    """Render a top story with full treatment."""
     title       = (a.get("ai_title") or a.get("title", "")).strip()
     url         = a.get("url", "#")
     company_tag = a.get("company_tag", "")
+    category    = a.get("category", "")
     overview    = _esc(a.get("overview") or a.get("ai_summary") or a.get("summary") or "")
     why_matters = _esc(a.get("why_it_matters", ""))
     og_image    = a.get("og_image", "")
@@ -290,7 +306,7 @@ def _top_story_card(a: dict) -> str:
       <tbody>
         <tr>
           <td style="padding:20px 20px 0 20px;">
-            {_company_tag_badge(company_tag)}
+            {_company_tag_badge(company_tag)}{_category_badge(category)}
             <p style="font-family:Helvetica,Arial,sans-serif;font-size:19px;font-weight:800;
                       line-height:26px;color:{BLACK};margin:0;">
               <a href="{url}" style="color:{BLACK};text-decoration:none;" target="_blank">{_esc(title)}</a>
@@ -301,7 +317,7 @@ def _top_story_card(a: dict) -> str:
         <tr>
           <td style="padding:12px 20px 0 20px;">
             <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
-                      color:{BLACK};margin:0 0 4px 0;">The Rundown:</p>
+                      color:{BLACK};margin:0 0 4px 0;">What happened:</p>
             <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
                       color:{DARK_GRAY};margin:0;">{overview}</p>
           </td>
@@ -368,6 +384,33 @@ def _quick_hits_section(articles: list[dict]) -> str:
         </tr>
         <tr><td style="padding:4px 20px 0 20px;">{_divider(ACCENT)}</td></tr>
         {items_html}
+      </tbody>
+    </table>"""
+
+
+def _forward_cta() -> str:
+    """Render a forward-to-friend CTA block."""
+    if not SITE_URL:
+        return ""
+
+    forward_url = f"{SITE_URL}?utm_source=forward&utm_medium=email"
+    return f"""
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation"
+           style="max-width:600px;margin:0 auto 24px auto;background-color:{WHITE};
+                  border:1px solid {LIGHT_GRAY};border-radius:8px;" width="100%">
+      <tbody>
+        <tr>
+          <td style="padding:16px 20px;text-align:center;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;
+                      color:{DARK_GRAY};margin:0 0 8px 0;">
+              Enjoying this? Forward it to one person who builds with AI.
+            </p>
+            <a href="{forward_url}" style="font-family:Helvetica,Arial,sans-serif;
+               font-size:13px;color:{ORANGE};font-weight:700;text-decoration:none;">
+              They can subscribe free \u2192
+            </a>
+          </td>
+        </tr>
       </tbody>
     </table>"""
 
@@ -473,6 +516,18 @@ def build_html(top_stories: list[dict], quick_hits: list[dict], date_str: str) -
     # ── Quick hits ───────────────────────────────────────────────────────────
     quick_html = _quick_hits_section(quick_hits)
 
+    # ── Forward CTA ──────────────────────────────────────────────────────────
+    forward_html = _forward_cta()
+
+    # ── Web version link ─────────────────────────────────────────────────────
+    web_version = ""
+    if SITE_URL:
+        web_version = (
+            f'<p style="text-align:center;margin:0 0 16px 0;">'
+            f'<a href="{SITE_URL}" style="font-family:Helvetica,Arial,sans-serif;'
+            f'font-size:12px;color:{ACCENT};text-decoration:none;">View in browser \u2192</a></p>'
+        )
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -486,6 +541,8 @@ def build_html(top_stories: list[dict], quick_hits: list[dict], date_str: str) -
 <tbody><tr>
 <td align="center" style="padding:24px 12px;">
 
+  {web_version}
+
   <!-- HEADER -->
   <table border="0" cellpadding="0" cellspacing="0" role="presentation"
          style="max-width:600px;margin:0 auto 24px auto;background-color:{BLACK};border-radius:8px 8px 0 0;" width="100%">
@@ -493,7 +550,7 @@ def build_html(top_stories: list[dict], quick_hits: list[dict], date_str: str) -
       <td style="padding:28px 24px 24px 24px;">
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
                   letter-spacing:2px;text-transform:uppercase;color:{ORANGE};margin:0 0 12px 0;">
-          Daily Newsletter
+          Built for AI builders
         </p>
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:28px;font-weight:900;
                   letter-spacing:-0.5px;color:{WHITE};margin:0 0 4px 0;line-height:1.1;">
@@ -532,6 +589,9 @@ def build_html(top_stories: list[dict], quick_hits: list[dict], date_str: str) -
   <!-- QUICK HITS -->
   {quick_html}
 
+  <!-- FORWARD CTA -->
+  {forward_html}
+
   <!-- FOOTER -->
   <table border="0" cellpadding="0" cellspacing="0" role="presentation"
          style="max-width:600px;margin:0 auto 16px auto;" width="100%">
@@ -543,7 +603,8 @@ def build_html(top_stories: list[dict], quick_hits: list[dict], date_str: str) -
         </p>
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:{GRAY};margin:0;">
           You're receiving this because you subscribed to AI Daily.<br>
-          <a href="#" style="color:{GRAY};text-decoration:underline;">Unsubscribe</a>
+          Hit reply to share feedback or a story tip.<br>
+          <a href="{UNSUBSCRIBE_URL or '#'}" style="color:{GRAY};text-decoration:underline;">Unsubscribe</a>
         </p>
       </td>
     </tr></tbody>
