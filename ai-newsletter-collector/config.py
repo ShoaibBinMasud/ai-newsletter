@@ -21,8 +21,8 @@ Sections
 # 1. LLM Models & Temperatures
 # =============================================================================
 
-DEDUP_MODEL     = "gpt-4.1-mini"      # Clusters same-story articles
-FILTER_MODEL    = "gpt-4.1-mini"      # Editorial selection
+DEDUP_MODEL     = "gpt-4o"      # Clusters same-story articles
+FILTER_MODEL    = "gpt-4o"      # Editorial selection
 SUMMARIZE_MODEL = "gpt-4o" # Title / summary / score generation
 
 DEDUP_TEMPERATURE     = 0.0   # Deterministic — clustering has a right answer
