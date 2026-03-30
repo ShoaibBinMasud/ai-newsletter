@@ -45,23 +45,23 @@ DEDUP_MAX_CANDIDATES = 60
 DEDUP_MAX_ROUNDS: int = 3
 
 # Minimum LLM-assigned score (1–10) for an article to be published.
-PUBLISH_THRESHOLD = 6
+PUBLISH_THRESHOLD = 5
 
 # Ordered fallback thresholds tried when fewer than PUBLISH_MIN_ARTICLES pass.
-PUBLISH_THRESHOLD_FALLBACKS: list[int] = [6, 5, 4]
+PUBLISH_THRESHOLD_FALLBACKS: list[int] = [5, 4, 3]
 
 # Minimum articles total before the threshold is lowered.
-PUBLISH_MIN_ARTICLES: int = 5
+PUBLISH_MIN_ARTICLES: int = 12
 
 # Hard cap on articles in the final output (applied after diversity enforcement).
-PUBLISH_MAX_ARTICLES: int = 12
+PUBLISH_MAX_ARTICLES: int = 15
 
 # Per-category hard cap on articles in the final output.
 # Prevents any single topic from dominating the newsletter.
-MAX_ARTICLES_PER_CATEGORY: int = 5
+MAX_ARTICLES_PER_CATEGORY: int = 6
 
 # Cap for bonus categories (Tutorials & Guides, GitHub & Open Source).
-MAX_ARTICLES_PER_BONUS_CATEGORY: int = 2
+MAX_ARTICLES_PER_BONUS_CATEGORY: int = 3
 
 # Jaccard title-word overlap required to call two articles the "same story"
 # during global pre-dedup (before scraping, fast path).
@@ -180,10 +180,10 @@ TIER1_SOURCES: frozenset[str] = frozenset({
 # =============================================================================
 
 # Number of deep stories with overview/details/why_it_matters
-TOP_STORY_COUNT: int = 4
+TOP_STORY_COUNT: int = 5
 
 # Number of compact one-liner items in the quick hits section
-QUICK_HIT_COUNT: int = 6
+QUICK_HIT_COUNT: int = 7
 
 # Model and temperature for generating the editorial opener
 OPENER_MODEL: str = "gpt-4o"

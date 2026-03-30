@@ -115,7 +115,7 @@ def main() -> None:
     print(f"\nSaving {len(all_articles)} articles to database...")
     inserted = save_articles(conn, all_articles)
     skipped  = len(all_articles) - inserted
-    print(f"  ✓ {inserted} new articles saved  ({skipped} duplicates/skipped)")
+    print(f"  * {inserted} new articles saved  ({skipped} duplicates/skipped)")
 
     # ── Step 4: Build email + create Beehiiv draft ───────────────────────────
     edition_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -129,15 +129,15 @@ def main() -> None:
         print(f"\nBuilding email for {len(top_stories)} top stories + {len(quick_hits)} quick hits...")
         html         = build_html(top_stories, quick_hits, edition_date)
         preview_path = save_preview(html, edition_date)
-        print(f"  ✓ Preview saved: {preview_path}")
+        print(f"  * Preview saved: {preview_path}")
 
         print("Creating Beehiiv draft...")
         send_to_beehiiv(html, edition_date)
     else:
         print("\n  [!] No featured articles — skipping email build")
 
-    # ── Step 5: Print summary table ──────────────────────────────────────────
-    print("\n─── Articles ───")
+    # --- Step 5: Print summary table ----
+    print("\n--- Articles ---")
     if top_stories:
         print("  Top stories:")
         for a in top_stories:

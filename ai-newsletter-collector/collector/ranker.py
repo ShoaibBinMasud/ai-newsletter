@@ -160,8 +160,8 @@ def global_llm_dedup(articles: list[dict], client: OpenAI) -> list[dict]:
     Example — LiteLLM pair (share only 1 title word, needs LLM to match):
       "LiteLLM Hacked, Malware Targets Kubernetes Clusters"
       "LiteLLM Backdoored via Trivy CI/CD Compromise"
-      Round 1: both in different batches → missed
-      Round 2: shuffle → now in same batch → caught ✓
+      Round 1: both in different batches -> missed
+      Round 2: shuffle -> now in same batch -> caught ✓
 
     Convergence
     -----------
@@ -182,7 +182,7 @@ def global_llm_dedup(articles: list[dict], client: OpenAI) -> list[dict]:
         if len(articles) <= DEDUP_MAX_CANDIDATES:
             # Small enough for a single call — final definitive pass
             articles = _dedup_batch(articles, client)
-            print(f"  LLM dedup round {round_num} (final): {before} → {len(articles)}")
+            print(f"  LLM dedup round {round_num} (final): {before} -> {len(articles)}")
             break
 
         # Shuffle before each round to mix articles across original batch boundaries
@@ -194,7 +194,7 @@ def global_llm_dedup(articles: list[dict], client: OpenAI) -> list[dict]:
         articles = result
 
         removed_this_round = before - len(articles)
-        print(f"  LLM dedup round {round_num}: {before} → {len(articles)}"
+        print(f"  LLM dedup round {round_num}: {before} -> {len(articles)}"
               + (f" (-{removed_this_round})" if removed_this_round else " (no change)"))
 
         if removed_this_round == 0:
@@ -202,7 +202,7 @@ def global_llm_dedup(articles: list[dict], client: OpenAI) -> list[dict]:
             break
 
     total_removed = original_count - len(articles)
-    print(f"  LLM dedup total: {original_count} → {len(articles)} ({total_removed} removed)")
+    print(f"  LLM dedup total: {original_count} -> {len(articles)} ({total_removed} removed)")
     return articles
 
 
@@ -353,7 +353,7 @@ def llm_filter(articles: list[dict], client: OpenAI) -> list[dict]:
 
         selected_set = set(selected_idx)
         dropped = [candidates[i] for i in range(len(candidates)) if i not in selected_set]
-        print(f"  Filter: {len(relevant_idx)} relevant → {len(selected_idx)} selected"
+        print(f"  Filter: {len(relevant_idx)} relevant -> {len(selected_idx)} selected"
               f" ({len(dropped)} dropped)")
         print(f"  [filter-kept]    " + " | ".join(candidates[i]["title"][:60] for i in selected_idx))
         print(f"  [filter-dropped] " + " | ".join(a["title"][:60] for a in dropped))
@@ -617,7 +617,7 @@ def apply_score_bonuses(articles: list[dict]) -> list[dict]:
         elif story_tier == 3:
             tier_priority_bonus = 1  # Genuine technique — fills remaining top story slots
         else:  # story_tier == 0 or missing
-            tier_priority_bonus = 0  # Business, opinion, generic how-to → quick hits
+            tier_priority_bonus = 0  # Business, opinion, generic how-to -> quick hits
 
         # Secondary source recency penalty: if from Medium/secondary aggregator
         # and article is 3+ days old, it's likely stale commentary, not breaking news
@@ -674,7 +674,7 @@ def apply_score_gate(articles: list[dict]) -> list[dict]:
         if len(candidates) >= PUBLISH_MIN_ARTICLES:
             dropped = [a for a in articles if a not in candidates]
             suffix = f" (lowered from {PUBLISH_THRESHOLD})" if threshold < PUBLISH_THRESHOLD else ""
-            print(f"  Score gate: {len(candidates)}/{len(articles)} scored ≥{threshold}{suffix}")
+            print(f"  Score gate: {len(candidates)}/{len(articles)} scored >={threshold}{suffix}")
             if dropped:
                 print(f"  [score-dropped] " + " | ".join(
                     f"{a.get('title', '')[:50]} (score={a.get('score')}, cat={a.get('category', '?')})"
@@ -689,7 +689,7 @@ def apply_score_gate(articles: list[dict]) -> list[dict]:
         or a.get("category") in _ALWAYS_PASS_CATEGORIES
     ]
     dropped = [a for a in articles if a not in result]
-    print(f"  Score gate: {len(result)}/{len(articles)} scored ≥{lowest} (lowest fallback)")
+    print(f"  Score gate: {len(result)}/{len(articles)} scored >={lowest} (lowest fallback)")
     if dropped:
         print(f"  [score-dropped] " + " | ".join(
             f"{a.get('title', '')[:50]} (score={a.get('score')}, cat={a.get('category', '?')})"
@@ -1019,6 +1019,6 @@ def run_pipeline(articles: list[dict]) -> list[dict]:
     for a in articles:
         a["is_featured"] = 1
 
-    print(f"\n  → {len(articles)} articles ready to publish"
+    print(f"\n  -> {len(articles)} articles ready to publish"
           f" ({len(top_stories)} top stories + {len(quick_hits)} quick hits)")
     return articles
