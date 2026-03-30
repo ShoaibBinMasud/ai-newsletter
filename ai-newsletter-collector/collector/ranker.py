@@ -20,6 +20,7 @@ import os
 import random
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
 from openai import OpenAI
 
 from config import (
@@ -478,39 +479,173 @@ _HIGH_PRIORITY_CATEGORIES = frozenset({
     "Model Releases",
     "Products & Features",
     "RAG, Agents & Techniques",
+    "Productivity & Efficiency",
+})
+
+# Categories that get a -1 penalty — pushed toward quick hits, not top stories
+_LOW_PRIORITY_CATEGORIES = frozenset({
+    "Business & Funding",
+})
+
+# Article title keywords that signal a big AI lab story — gets a +1 company boost
+# even when the article comes from a secondary source (TechCrunch, The Verge, etc.)
+_TIER1_COMPANY_KEYWORDS = frozenset({
+    "openai", "anthropic", "google", "deepmind", "gemini", "gpt",
+    "claude", "meta ai", "llama", "mistral", "grok", "xai",
+    "perplexity", "deepseek", "qwen", "baidu", "ernie",
+    "zhipu", "moonshot", "kimi", "minimax", "01.ai",
+})
+
+# Official source feeds (direct company blogs) — get +1 source-origin bonus
+# These are primary sources: when an official announcement and secondary coverage
+# both exist, the official should rank higher.
+_OFFICIAL_SOURCE_FEEDS = frozenset({
+    # Official lab blogs (WEB_SOURCES)
+    "Anthropic Blog",
+    "Mistral AI Blog",
+    "Cursor Blog",
+    "Windsurf Blog",
+    # Official RSS feeds
+    "OpenAI News",
+    "Google DeepMind",
+    "Google AI Blog",
+    "Google Research",
+    "Microsoft Research",
+    "NVIDIA Blog",
+    "Apple ML",
+    "AWS News Blog - AI",
+    "Google Cloud AI Blog",
+    "Azure AI Blog",
+    "Berkeley AI (BAIR)",
+    "CMU ML Blog",
+    "MIT AI News",
+    "GitHub Blog",
+    "DeepMind Blog",
+    "Meta News",
+    "Databricks Blog",
+    "Hugging Face Blog",
+    "LangChain",
+    "Replicate Blog",
+    # Enterprise AI research labs
+    "Salesforce Research",
+    "Salesforce Blog",
+    "IBM Research",
+    "Adobe Research",
+})
+
+# Secondary aggregator feeds (Medium, Towards AI, etc.) — get -0.5 source-origin penalty
+# These feeds republish/analyze news rather than breaking it. When competing with
+# official sources, they should rank slightly lower to ensure readers see original.
+_SECONDARY_AGGREGATOR_FEEDS = frozenset({
+    "Medium – AI tag",
+    "Medium – LLM tag",
+    "Medium – Machine Learning tag",
+    "Towards AI – Medium",
+    "Towards Data Science",
 })
 
 def apply_score_bonuses(articles: list[dict]) -> list[dict]:
     """
     Adjust LLM-assigned scores based on signals the LLM can't see:
 
+    Tier-based priority bonus (story_tier field from SUMMARIZE_PROMPT)
+      story_tier=1 (big-tech release): +3 — always top stories
+      story_tier=2 (significant non-big-tech innovation): +2 — strong contenders
+      story_tier=3 (genuine technique/improvement): +1 — fills remaining top story slots
+      story_tier=0 (business, generic how-to, opinion): +0 — quick hits only
+
+    Source-origin bonus/penalty
+      Official source feeds (+1): direct company blogs, official news feeds
+      Secondary aggregators (-0.5): Medium, Towards AI, etc. republish news
+      This ensures when both official announcement and secondary coverage exist,
+      official sources rank higher.
+
+    Secondary recency penalty (-0.5 for 3+ day old articles)
+      Articles from secondary sources (Medium, TechCrunch, etc.) published 3+ days
+      after the original announcement are likely stale commentary, not breaking news.
+      These get an additional penalty to keep fresh, original reporting at the top.
+
     Feed mention bonus
       An article that appeared in 3 independent feeds is more newsworthy
       than one from a single source. Bonus = min(feed_mentions - 1, cap).
 
-    Source tier bonus
-      Official blogs (OpenAI, Anthropic, Google Research, etc.) are primary
-      sources. TIER1_SOURCES defined in config.py.
+    Source tier bonus (config.py TIER1_SOURCES)
+      Official blogs from the TIER1_SOURCES list get an additional boost.
 
-    Category priority bonus
-      High-priority categories (Model Releases, Products & Features,
-      RAG/Agents/Techniques) get +1 to ensure they surface above generic news.
+    Company keyword bonus
+      Articles about major AI labs (OpenAI, Anthropic, Google, Mistral, xAI,
+      Perplexity, Chinese AI companies) get +1 when from secondary sources,
+      ensuring big-lab news competes with tier-1 blog posts.
 
-    All scores are clamped to [1, 10] in _validate_articles (Step 9).
+    Business & Funding penalty
+      Funding rounds and business deals get -1 to push them toward quick hits
+      rather than top stories, unless they score very high on their own merit.
+
+    Final formula:
+      score = base_score + tier_priority_bonus + source_origin_bonus + mention_bonus
+              + tier_bonus + company_bonus - category_penalty - secondary_recency_penalty
+
+    All scores are clamped to [1, 10] in _validate_articles (Step 10).
     """
     for a in articles:
         score = a.get("score")
         if score is None:
             continue
 
+        source = a.get("source", "")
+
+        # Source-origin weighting: official sources rank higher than secondary
+        if source in _OFFICIAL_SOURCE_FEEDS:
+            source_origin_bonus = 1
+        elif source in _SECONDARY_AGGREGATOR_FEEDS:
+            source_origin_bonus = -0.5
+        else:
+            source_origin_bonus = 0
+
         mentions      = a.get("feed_mentions", 1)
         mention_bonus = min(mentions - 1, FEED_MENTION_BOOST_CAP)
 
-        tier_bonus = SOURCE_TIER1_BOOST if a.get("source") in TIER1_SOURCES else 0
+        tier_bonus = SOURCE_TIER1_BOOST if source in TIER1_SOURCES else 0
 
-        category_bonus = 1 if a.get("category") in _HIGH_PRIORITY_CATEGORIES else 0
+        # Tier-based priority bonus (using story_tier field from LLM)
+        # This replaces category_bonus with explicit tier classification
+        story_tier = a.get("story_tier", 0)
+        if story_tier == 1:
+            tier_priority_bonus = 3  # Big-tech releases — always top stories
+        elif story_tier == 2:
+            tier_priority_bonus = 2  # Significant non-big-tech innovation — strong contender
+        elif story_tier == 3:
+            tier_priority_bonus = 1  # Genuine technique — fills remaining top story slots
+        else:  # story_tier == 0 or missing
+            tier_priority_bonus = 0  # Business, opinion, generic how-to → quick hits
 
-        a["score"] = score + mention_bonus + tier_bonus + category_bonus
+        # Secondary source recency penalty: if from Medium/secondary aggregator
+        # and article is 3+ days old, it's likely stale commentary, not breaking news
+        secondary_recency_penalty = 0
+        if source in _SECONDARY_AGGREGATOR_FEEDS:
+            published_str = a.get("published_at")
+            if published_str:
+                try:
+                    published_date = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
+                    days_old = (datetime.now(published_date.tzinfo) - published_date).days
+                    if days_old >= 3:
+                        secondary_recency_penalty = 0.5  # Penalize stale secondary coverage
+                except (ValueError, TypeError, AttributeError):
+                    pass
+
+        # Company keyword boost for major AI lab stories from secondary sources
+        title_lower = (a.get("ai_title") or a.get("title") or "").lower()
+        company_bonus = (
+            1 if any(kw in title_lower for kw in _TIER1_COMPANY_KEYWORDS)
+            and source not in TIER1_SOURCES
+            and a.get("category") not in ("Business & Funding",)
+            else 0
+        )
+
+        category_penalty = 1 if a.get("category") in _LOW_PRIORITY_CATEGORIES else 0
+
+        a["score"] = (score + tier_priority_bonus + source_origin_bonus + mention_bonus
+                      + tier_bonus + company_bonus - category_penalty - secondary_recency_penalty)
 
     return articles
 

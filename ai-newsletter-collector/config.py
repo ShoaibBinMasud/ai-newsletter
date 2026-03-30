@@ -168,6 +168,11 @@ TIER1_SOURCES: frozenset[str] = frozenset({
     "AWS News Blog - AI",
     "Google Cloud AI Blog",
     "Azure AI Blog",
+    # Enterprise AI research
+    "Salesforce Research",
+    "Salesforce Blog",
+    "IBM Research",
+    "Adobe Research",
 })
 
 # =============================================================================

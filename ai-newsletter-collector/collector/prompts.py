@@ -129,26 +129,47 @@ Review the articles below and return two lists:
    who BUILDS with AI would genuinely want to read. Aim for 30–45 stories total; never go
    below 10 unless fewer than 10 relevant articles exist.
 
-   WEIGHT HEAVILY: stories that change what a developer can build, what it costs to build,
-   or how fast they can build it. These include:
-   • New model APIs and availability (pricing, access tier, capabilities)
-   • Open-source releases and frameworks that enable new workflows
-   • Agent frameworks and RAG techniques that unlock new applications
-   • Cost reductions that make previously expensive approaches viable
-   • New developer tools, integrations, and capabilities
+   PRIORITY ORDER for top story candidates (select in this order):
 
-   • ALWAYS INCLUDE: any new model launch or release from a major AI lab (OpenAI, Google,
-     Anthropic, Meta, xAI, Mistral, Cohere, Apple, NVIDIA, DeepSeek, etc.) — these are
-     never optional regardless of how many other stories from that company are selected.
-   • Try to select at least one article per category above if a good candidate exists.
-   • INCLUDE: products and features, significant funding/acquisitions, policy changes,
-     important research, tools or frameworks that change how practitioners work.
-   • INCLUDE for Productivity & Efficiency: articles about how people use AI tools to
-     work smarter — tips for ChatGPT/Claude/Copilot/Cursor/Perplexity, workflow hacks,
-     prompting strategies, real experiences of getting more done with AI. These are
-     valuable to readers even if they seem "light" — DO NOT drop them as opinion or niche.
-     Examples: "3 ways to work with Claude", "How I use Copilot to save 2 hours a day",
-     "Tips for Claude Code", "How I replaced X with AI".
+   TIER 1 — Select all of these first (NEVER optional):
+   • Model or feature releases from: OpenAI, Google/DeepMind/Gemini, Anthropic/Claude, Meta AI/Llama,
+     xAI/Grok, Mistral, Perplexity, Apple ML, NVIDIA, DeepSeek, Qwen/Alibaba, Baidu/ERNIE,
+     Zhipu AI, Moonshot/Kimi, MiniMax, 01.AI — any Chinese AI lab.
+     New model versions, new APIs, new developer capabilities from these companies are
+     automatically top-story candidates.
+
+   TIER 2 — Significant non-big-tech innovations developers MUST know about:
+   • Open-source frameworks or tools that break new ground and go viral
+     (think OpenClaw-level: developers didn't know this was possible, now they can build X)
+   • Research lab or startup releasing a product/API with clear, measurable breakthrough
+     (Example: Salesforce VoiceAgentRAG cutting retrieval latency 316x)
+   • Key test: Would an AI developer say "I didn't know I could do that now"? If yes, INCLUDE.
+   • NOT TIER 2: generic Medium analysis of existing tools, rehashed news coverage,
+     unsubstantiated claims. Only GENUINE breakthroughs from non-big-tech.
+
+   TIER 3 — Genuine AI techniques and improvements (NOT generic how-to blogs):
+   • New methods, architectures, frameworks with measurable results: "30% faster", "6x compression",
+     "33× speedup", "new SOTA on benchmark X"
+   • RAG improvements, agent framework updates, context window research, quantization techniques
+   • Productivity & Efficiency: HOW PEOPLE USE AI TO BUILD FASTER — tips, workflows, hacks
+     that help developers ship code quicker. Real stories of efficiency gains, not generic
+     productivity opinion.
+   • EXCLUDE from Tier 3: "5 prompting tips", "Top 10 AI tools", "How to use ChatGPT",
+     generic Medium listicles — these are NOT "techniques" and belong in quick hits.
+
+   CRITICAL: Detect secondary commentary masquerading as Tier 3:
+   • If a Medium/TechCrunch/secondary source article was published 2+ days AFTER the
+     announcement it covers, it is secondary commentary/analysis, NOT a genuine technique.
+     Deprioritize it accordingly.
+     Example: "Claude Dispatch (released March 25) explained" published March 28 → secondary,
+     belongs in quick hits, not top stories.
+
+   TIER 0 — Include if space remains, but LOWEST priority:
+   • Policy & Governance, Security & Threats, AI Applications, Research & Open Source
+   • Chips & Infrastructure (GPU/TPU releases)
+   • Business & Funding: funding rounds, acquisitions, enterprise deals
+   • IMPORTANT: DEPRIORITIZE defense/military AI applications unless the AI tech is novel.
+
    • EXCLUDE: incremental updates with no new information, duplicate angles on the same
      story already selected, niche regional news, or pure opinion with no new facts.
    Do NOT apply a per-source cap here — source diversity is enforced downstream.
@@ -239,21 +260,77 @@ For each article below, write:
 "score" — Editorial importance score from 1 to 10.
 
   Score calibration — use these as anchors (do NOT include them in your output):
-    10 = "OpenAI Releases GPT-5 with 2× Reasoning Improvement"   (flagship model launch)
-     9 = "EU AI Act Signed Into Law, Takes Effect in 6 Months"   (landmark regulation)
-     8 = "Databricks Raises $500M Series I at $43B Valuation"    (major funding)
-     7 = "Anthropic's Claude 3 Passes Bar Exam Above Average"    (notable benchmark)
-     6 = "Tutorial: Fine-Tuning Llama 3 on Custom Datasets"      (useful but not urgent)
-     4 = "Startup Raises $2M Seed for AI Email Summarizer"       (incremental / niche)
-     2 = "Opinion: Will AI Replace Programmers?"                  (opinion, no new facts)
+    10 = "OpenAI Releases GPT-5 with 2× Reasoning Improvement"        (flagship model launch)
+     9 = "Google Releases Gemini 2.0 Flash with Real-Time Voice API"   (major product from big lab)
+     8 = "Anthropic's Claude 3.5 Passes Bar Exam Above Average"        (notable benchmark/technique)
+     8 = "Google TurboQuant Compresses LLM Memory by 6x"               (major technique/infra advance)
+     7 = "LangGraph Adds Streaming Human-in-the-Loop for Agents"       (useful technique, RAG, agents)
+     6 = "Databricks Raises $500M Series I at $43B Valuation"          (funding — max 6 for any deal)
+     5 = "Eli Lilly Signs $2.75B AI Drug Deal with Insilico Medicine"  (enterprise AI deal)
+     5 = "Tutorial: Fine-Tuning Llama 3 on Custom Datasets"            (useful but not urgent)
+     4 = "Startup Raises $2M Seed for AI Email Summarizer"             (incremental / niche)
+     2 = "Opinion: Will AI Replace Programmers?"                        (opinion, no new facts)
+
+  HARD RULES for category scoring:
+  • "Business & Funding": NEVER score above 6. Funding rounds and enterprise deals belong
+    in quick hits, not top stories. Even a $10B raise caps at 6.
+  • "Model Releases" from major labs (OpenAI, Google, Anthropic, Meta, Mistral, xAI,
+    DeepSeek, Qwen, Perplexity): minimum score 7. These are always top-story candidates.
+  • "Products & Features" from major labs: minimum score 6, typically 7-8.
+  • "RAG, Agents & Techniques": score 6-8 depending on novelty and practical impact.
+  • "Productivity & Efficiency": score 5-7 — these are valuable to readers even if not urgent.
+  • Generic how-to blogs ("5 tips for X", "Top 10 tools", productivity opinion): score 4-5 MAX.
 
   Guidance:
   • Be honest and critical — most articles should score 5–7. Reserve 8+ for genuinely big news.
   • A story with high buzz (many sources reported it) likely deserves a higher score.
   • Penalise: incremental product tweaks, press-release fluff, niche regional news.
 
+"story_tier" — Classify the article's editorial tier (integer 0–3):
+
+  1 = Big-tech model or feature RELEASE (not analysis/coverage of existing models):
+      Companies: OpenAI, Google/DeepMind/Gemini, Anthropic/Claude, Meta AI/Llama, xAI/Grok,
+      Mistral, Perplexity, Apple ML, NVIDIA, DeepSeek, Qwen/Alibaba, Baidu/ERNIE,
+      Zhipu AI, Moonshot/Kimi, MiniMax, 01.AI, any Chinese AI lab.
+      Must be a NEW release or NEW capability — not an article analyzing their existing model.
+
+  2 = Significant non-big-tech innovation that developers MUST know about:
+      Ask: "Would an AI developer say 'I didn't know that was possible'?"
+      Qualifies: open-source tool breaking new ground (e.g., OpenClaw going viral),
+      research lab releasing a new framework with measurable breakthrough,
+      startup releasing a product/API that fundamentally changes how devs build.
+      Example: "Salesforce VoiceAgentRAG cuts retrieval latency 316x" = tier 2
+      NOT tier 2: a Medium analysis of an existing tool, generic tutorial, opinion piece.
+
+  3 = Genuine AI technique or improvement with measurable results:
+      Qualifies: new RAG architecture, new quantization method, new agent framework capability,
+      new benchmark result that changes what's considered SOTA.
+      Key test: is there a "before/after" measurement? ("40% faster", "6x compression", "33× speedup")
+      NOT tier 3: "5 prompting tips for ChatGPT", "How to use Claude for email",
+      "Top 10 AI tools this week", generic productivity listicles.
+
+      IMPORTANT — Detect secondary commentary vs. genuine technique:
+      • If the article is from Medium/TechCrunch/The Verge/secondary source AND was
+        published 2+ days AFTER the announcement date in the content, it is secondary
+        commentary/opinion, NOT a genuine technique. Assign tier=0.
+        Example: Article says "Claude Dispatch was released March 25" but article
+        publish date is March 28 → This is analysis published 3 days later → tier=0, not tier=3.
+      • Watch for analysis language: "explained", "analysis of", "deep dive", "opinion",
+        "what you need to know", "takeaway" → indicates secondary commentary → lower tier.
+      • Watch for announcement language: "releases", "launches", "introduces", "measured",
+        "benchmark shows" → indicates original reporting or research → can be higher tier.
+
+  0 = Everything else: business news, policy, opinion, generic how-to tutorials, security news.
+
+  Story tier scoring guidance:
+  • Tier 1 articles: score 8-10 for flagship releases, 7-8 for feature releases
+  • Tier 2 articles: score 7-9 depending on novelty and developer impact
+  • Tier 3 (genuine technique): score 6-8 depending on measurability and novelty
+  • Tier 3 (generic how-to): score 4-5 MAX — do NOT assign tier=3 to generic blogs
+  • Tier 0: follows existing rules above
+
 Return strictly valid JSON, no prose, no markdown:
-{{"articles": [{{"index": 0, "title": "...", "summary": "...", "category": "...", "score": 7}}, ...]}}
+{{"articles": [{{"index": 0, "title": "...", "summary": "...", "category": "...", "score": 7, "story_tier": 1}}, ...]}}
 
 Articles:
 {articles}"""
