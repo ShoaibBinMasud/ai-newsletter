@@ -232,143 +232,175 @@ def _category_badge(category: str) -> str:
     )
 
 
+def _format_bullet(text: str) -> str:
+    """Format a bullet point with bold numbers and clickable links for URLs."""
+    import re as _re
+    escaped = _esc(text)
+    # Turn plain URLs into clickable blue links (before bolding numbers inside them)
+    escaped = _re.sub(
+        r'(https?://[^\s,)&]+|github\.com/[^\s,)&]+)',
+        rf'<a href="https://\1" style="color:#2563eb;text-decoration:underline;" target="_blank">\1</a>',
+        escaped,
+    )
+    # Fix double-protocol for URLs that already had https://
+    escaped = escaped.replace('https://https://', 'https://')
+    escaped = escaped.replace('https://http://', 'http://')
+    # Bold numbers/metrics (e.g. "92.3%", "$15/M", "200K", "3x", "1,200")
+    # Avoid bolding numbers inside href attributes
+    escaped = _re.sub(
+        r'(?<!["/=\w])(\$?[\d,]+\.?\d*[%xXBMKk]?(?:/[A-Za-z]+)?)(?!["\w/])',
+        r'<strong style="color:#0a0a0a;">\1</strong>',
+        escaped,
+    )
+    return escaped
+
+
 def _top_story_card(a: dict) -> str:
-    """Render a top story with full treatment."""
+    """Render a top story: title + summary + key details + bottom line."""
     title       = (a.get("ai_title") or a.get("title", "")).strip()
     url         = a.get("url", "#")
-    company_tag = a.get("company_tag", "")
-    category    = a.get("category", "")
-    overview    = _esc(a.get("overview") or a.get("ai_summary") or a.get("summary") or "")
+    summary     = _esc(a.get("ai_summary") or a.get("overview") or a.get("summary") or "")
     why_matters = _esc(a.get("why_it_matters", ""))
-    og_image    = a.get("og_image", "")
-    source      = a.get("source", "")
 
-    # Parse details from JSON string
+    # Parse key_points / details from JSON string
     details_raw = a.get("details", "[]")
     try:
-        details = json.loads(details_raw) if isinstance(details_raw, str) else details_raw
+        key_points = json.loads(details_raw) if isinstance(details_raw, str) else details_raw
     except (json.JSONDecodeError, TypeError):
-        details = []
+        key_points = []
 
-    # OG image block
-    image_html = ""
-    if og_image:
-        image_html = f"""
-        <tr>
-          <td style="padding:12px 20px 0 20px;">
-            <img src="{og_image}" alt="" width="560" style="display:block;width:100%;max-width:560px;
-                 height:auto;border-radius:6px;border:1px solid {LIGHT_GRAY};" />
-          </td>
-        </tr>"""
-
-    # Details bullets
-    details_html = ""
-    if details:
+    # Key details bullets with bold numbers
+    bullets_html = ""
+    if key_points:
         bullets = "".join(
-            f'<li style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;'
-            f'color:{DARK_GRAY};margin:0 0 6px 0;">{_esc(str(d))}</li>'
-            for d in details[:4]
+            f'<li style="font-family:Georgia,serif;font-size:14px;line-height:22px;'
+            f'color:{DARK_GRAY};margin:0 0 8px 0;">{_format_bullet(str(d))}</li>'
+            for d in key_points[:4]
         )
-        details_html = f"""
+        bullets_html = f"""
         <tr>
-          <td style="padding:12px 20px 0 20px;">
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
-                      color:{BLACK};margin:0 0 8px 0;">The details:</p>
-            <ul style="margin:0;padding:0 0 0 20px;">{bullets}</ul>
+          <td style="padding:10px 20px 0 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
+                      letter-spacing:1px;text-transform:uppercase;color:{GRAY};margin:0 0 8px 0;">
+              KEY DETAILS</p>
+            <ul style="margin:0;padding:0 0 0 18px;">{bullets}</ul>
           </td>
         </tr>"""
 
-    # Why it matters
+    # "Why it matters" as a highlighted callout block
     why_html = ""
     if why_matters:
         why_html = f"""
         <tr>
-          <td style="padding:12px 20px 0 20px;">
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
-                      color:{BLACK};margin:0 0 4px 0;">Why it matters:</p>
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
-                      color:{DARK_GRAY};margin:0;">{why_matters}</p>
+          <td style="padding:10px 20px 0 20px;">
+            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
+              <tbody><tr>
+                <td style="padding:10px 14px;background-color:#f8fafc;border-left:3px solid {ORANGE};
+                           border-radius:0 4px 4px 0;">
+                  <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
+                            letter-spacing:1px;text-transform:uppercase;color:{ORANGE};margin:0 0 4px 0;">
+                    THE BOTTOM LINE</p>
+                  <p style="font-family:Georgia,serif;font-size:14px;line-height:21px;
+                            color:{DARK_GRAY};margin:0;">{why_matters}</p>
+                </td>
+              </tr></tbody>
+            </table>
           </td>
         </tr>"""
 
-    # Source attribution
-    source_html = ""
-    if source:
-        source_html = (
-            f'<span style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:{GRAY};">'
-            f'Source: {_esc(source)}</span>'
-        )
-
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation"
-           style="max-width:600px;margin:0 auto 24px auto;background-color:{WHITE};
+           style="max-width:600px;margin:0 auto 20px auto;background-color:{WHITE};
                   border:1px solid {LIGHT_GRAY};border-radius:8px;" width="100%">
       <tbody>
         <tr>
-          <td style="padding:20px 20px 0 20px;">
-            {_company_tag_badge(company_tag)}{_category_badge(category)}
+          <td style="padding:18px 20px 0 20px;">
             <p style="font-family:Helvetica,Arial,sans-serif;font-size:19px;font-weight:800;
-                      line-height:26px;color:{BLACK};margin:0;">
+                      line-height:25px;color:{BLACK};margin:0;">
               <a href="{url}" style="color:{BLACK};text-decoration:none;" target="_blank">{_esc(title)}</a>
             </p>
           </td>
         </tr>
-        {image_html}
         <tr>
-          <td style="padding:12px 20px 0 20px;">
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;
-                      color:{BLACK};margin:0 0 4px 0;">What happened:</p>
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
-                      color:{DARK_GRAY};margin:0;">{overview}</p>
+          <td style="padding:10px 20px 0 20px;">
+            <p style="font-family:Georgia,serif;font-size:15px;line-height:24px;
+                      color:{DARK_GRAY};margin:0;">{summary}</p>
           </td>
         </tr>
-        {details_html}
+        {bullets_html}
         {why_html}
-        <tr>
-          <td style="padding:12px 20px 16px 20px;" align="right">{source_html}</td>
-        </tr>
+        <tr><td style="padding:0 0 14px 0;"></td></tr>
       </tbody>
     </table>"""
 
 
 def _quick_hits_section(articles: list[dict]) -> str:
-    """Render the quick hits section with compact one-liner items."""
+    """Render quick hits grouped by category."""
     if not articles:
         return ""
 
-    items_html = ""
+    # Group articles by category, preserving CATEGORY_ORDER
+    grouped: dict[str, list[dict]] = {}
     for a in articles:
-        company  = a.get("company_tag", "")
-        one_liner = _esc(a.get("one_liner") or a.get("ai_summary") or a.get("summary") or "")
-        title    = (a.get("ai_title") or a.get("title", "")).strip()
-        url      = a.get("url", "#")
+        cat = a.get("category", "")
+        grouped.setdefault(cat, []).append(a)
 
-        company_bold = (
-            f'<strong style="color:{BLACK};">{_esc(company)}</strong> '
-            if company else ""
-        )
+    sections_html = ""
+    for cat in CATEGORY_ORDER:
+        if cat not in grouped:
+            continue
+        meta = CATEGORY_META.get(cat, {})
+        emoji = meta.get("emoji", "")
+        color = meta.get("color", ACCENT)
+        label = meta.get("label", cat)
 
-        # Stars badge for GitHub repos
-        stars_html = ""
-        if a.get("is_github") and a.get("stars"):
-            stars_html = (
-                f' <span style="color:{ORANGE};font-weight:600;">'
-                f'\u2605 {a["stars"]:,}</span>'
-            )
+        items = ""
+        for a in grouped[cat]:
+            one_liner = _esc(a.get("one_liner") or a.get("ai_summary") or a.get("summary") or "")
+            title = (a.get("ai_title") or a.get("title", "")).strip()
+            url = a.get("url", "#")
+            items += f"""
+            <tr>
+              <td style="padding:8px 20px;">
+                <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
+                          color:{DARK_GRAY};margin:0;">
+                  <a href="{url}" style="color:{ACCENT};font-weight:600;
+                  text-decoration:none;" target="_blank">{_esc(title)}</a>
+                </p>
+                <p style="font-family:Georgia,serif;font-size:13px;line-height:20px;
+                          color:{GRAY};margin:4px 0 0 0;">{one_liner}</p>
+              </td>
+            </tr>"""
 
-        items_html += f"""
+        sections_html += f"""
         <tr>
-          <td style="padding:12px 20px;">
+          <td style="padding:16px 20px 4px 20px;">
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
+                      letter-spacing:1.2px;text-transform:uppercase;color:{color};
+                      margin:0;">{emoji} {_esc(label)}</p>
+          </td>
+        </tr>
+        <tr><td style="padding:2px 20px 0 20px;">{_divider(color)}</td></tr>
+        {items}"""
+
+    # Handle articles with unknown categories
+    uncategorized = [a for a in articles if a.get("category", "") not in CATEGORY_ORDER]
+    for a in uncategorized:
+        one_liner = _esc(a.get("one_liner") or a.get("ai_summary") or a.get("summary") or "")
+        title = (a.get("ai_title") or a.get("title", "")).strip()
+        url = a.get("url", "#")
+        sections_html += f"""
+        <tr>
+          <td style="padding:8px 20px;">
             <p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;
                       color:{DARK_GRAY};margin:0;">
-              {company_bold}<a href="{url}" style="color:{ACCENT};font-weight:600;
-              text-decoration:none;" target="_blank">{_esc(title)}</a>{stars_html}
+              <a href="{url}" style="color:{ACCENT};font-weight:600;
+              text-decoration:none;" target="_blank">{_esc(title)}</a>
             </p>
             <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;
                       color:{GRAY};margin:4px 0 0 0;">{one_liner}</p>
           </td>
-        </tr>
-        <tr><td style="padding:0 20px;">{_divider(LIGHT_GRAY)}</td></tr>"""
+        </tr>"""
 
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation"
@@ -377,13 +409,12 @@ def _quick_hits_section(articles: list[dict]) -> str:
       <tbody>
         <tr>
           <td style="padding:20px 20px 4px 20px;">
-            <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
-                      letter-spacing:1.5px;text-transform:uppercase;color:{ACCENT};
-                      margin:0;">EVERYTHING ELSE IN AI TODAY</p>
+            <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;
+                      letter-spacing:1.5px;text-transform:uppercase;color:{DARK_GRAY};
+                      margin:0;">SIGNALS</p>
           </td>
         </tr>
-        <tr><td style="padding:4px 20px 0 20px;">{_divider(ACCENT)}</td></tr>
-        {items_html}
+        {sections_html}
       </tbody>
     </table>"""
 

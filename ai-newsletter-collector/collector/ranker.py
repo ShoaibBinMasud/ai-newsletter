@@ -1,43 +1,43 @@
 """
 collector/ranker.py — AI-powered article ranking and summarisation pipeline.
 
-Single global pool pipeline:
-  1. Global Jaccard dedup       remove duplicate stories by title word-overlap
-  2. Global LLM dedup           cluster same-story articles, keep richest, track mentions
-  3. Parallel scraping          og:title + description + body intro (≤ MAX_EXCERPT chars)
-  4. LLM editorial filter       select top ~30-45 genuinely important stories
-  5. LLM summarise + categorise title, summary, category (9-topic taxonomy), score
-  6. Score bonuses              feed_mentions count + source tier + category priority
-  7. Score gate                 discard articles below PUBLISH_THRESHOLD
-  8. Diversity enforcement      cap same-source and same-category articles
-  9. Output validation          clamp scores, truncate overlong titles
+Simplified pipeline (3-4 LLM calls total):
+  1. Jaccard dedup          — remove duplicate stories by title word-overlap (free)
+  2. Light scrape           — og:title + description + body intro for all articles
+  3. LLM triage             — select top 12-15, score, categorize, classify tier
+  4. Deep scrape            — full content for selected articles only
+  5. LLM enrich top stories — overview, details, why_it_matters (with freshness check)
+  6. LLM enrich quick hits  — one-liner summaries
+  7. Diversity enforcement  — cap same-source and same-category
+  8. Output validation
 
-All tunable parameters (model names, temperatures, thresholds, etc.) live in config.py.
+All tunable parameters live in config.py.
 """
 
 import json
 import os
-import random
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import date, datetime
 from openai import OpenAI
 
 from config import (
-    DEDUP_MODEL,      FILTER_MODEL,      SUMMARIZE_MODEL,
-    DEDUP_TEMPERATURE, FILTER_TEMPERATURE, SUMMARIZE_TEMPERATURE,
-    MAX_CANDIDATES,   DEDUP_MAX_CANDIDATES, DEDUP_MAX_ROUNDS, PUBLISH_THRESHOLD,
-    PUBLISH_THRESHOLD_FALLBACKS, PUBLISH_MIN_ARTICLES, PUBLISH_MAX_ARTICLES,
+    TRIAGE_MODEL, TRIAGE_TEMPERATURE,
+    ENRICH_MODEL, ENRICH_TEMPERATURE,
+    SUMMARIZE_MODEL, SUMMARIZE_TEMPERATURE,
+    MAX_CANDIDATES,
     CROSS_SECTOR_THRESHOLD,
-    DEDUP_EXCERPT_CHARS, FILTER_EXCERPT_CHARS, SUMMARIZE_CONTENT_CHARS,
-    FEED_MENTION_BOOST_CAP, SOURCE_TIER1_BOOST, TIER1_SOURCES,
-    MAX_ARTICLES_PER_SOURCE, MAX_ARTICLES_PER_SUBCATEGORY,
-    MAX_ARTICLES_PER_CATEGORY, MAX_ARTICLES_PER_BONUS_CATEGORY,
-    SCRAPE_WORKERS,
+    TRIAGE_EXCERPT_CHARS, ENRICH_CONTENT_CHARS,
+    FEED_MENTION_BOOST_CAP,
+    MAX_ARTICLES_PER_SOURCE, MAX_ARTICLES_PER_CATEGORY,
+    MAX_ARTICLES_PER_BONUS_CATEGORY,
+    PUBLISH_MAX_ARTICLES,
     TOP_STORY_COUNT, QUICK_HIT_COUNT,
+    OFFICIAL_SOURCES, NEWS_SOURCES,
+    DEEP_SCRAPE_MAX_CHARS,
 )
 from collector.prompts import (
-    DEDUP_PROMPT, FILTER_PROMPT, SUMMARIZE_PROMPT,
+    TRIAGE_PROMPT,
     ENRICH_TOP_STORY_PROMPT, ENRICH_QUICK_HIT_PROMPT,
     CATEGORY_LIST, CATEGORY_DESCRIPTIONS,
 )
@@ -49,14 +49,12 @@ from collector.scraper import ArticleScraper
 # =============================================================================
 
 _STOPWORDS: frozenset[str] = frozenset({
-    # Grammar / function words
     "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
     "in", "on", "at", "to", "for", "of", "and", "or", "but", "nor",
     "with", "as", "by", "its", "it", "this", "that", "from", "into",
     "will", "can", "has", "have", "had", "may", "might", "would", "could",
     "not", "no", "all", "more", "over", "after", "about", "now", "just",
     "how", "why", "what", "who", "where", "when", "which",
-    # Generic action verbs
     "says", "said", "gets", "got", "set", "put", "let", "hit",
     "launches", "launch", "released", "releases", "release",
     "announces", "announced", "announce", "reveals", "revealed", "reveal",
@@ -68,13 +66,10 @@ _STOPWORDS: frozenset[str] = frozenset({
     "shows", "showed", "show", "beats", "beat", "tops", "top",
     "updates", "updated", "update", "adds", "added", "add",
     "blocks", "blocked", "block", "bans", "banned", "ban",
-    # Generic qualifiers / size words
     "new", "latest", "major", "key", "big", "first", "next", "last",
     "million", "billion", "trillion", "percent", "year", "month", "week",
-    # Generic company/deal nouns
     "company", "startup", "firm", "team", "group", "deal", "round",
     "report", "reports", "study", "series", "funding",
-    # Generic verbs
     "use", "using", "used", "get",
 })
 
@@ -86,31 +81,19 @@ def _title_words(title: str) -> set[str]:
 
 
 # =============================================================================
-# Step 1 — Global Jaccard deduplication
+# Step 1 — Jaccard deduplication (free, no LLM)
 # =============================================================================
 
-def global_jaccard_dedup(articles: list[dict]) -> list[dict]:
+def jaccard_dedup(articles: list[dict]) -> list[dict]:
     """
-    Remove duplicate stories across the entire article pool using title
-    word-overlap (Jaccard similarity).
-
-    This runs before any scraping or LLM calls, so it's cheap and fast.
-    When a duplicate pair is found:
-      - The later article (higher index) is removed.
-      - Its feed_mentions count is added to the survivor.
-
-    Parameters
-    ----------
-    articles : flat list of all raw article dicts
-
-    Returns
-    -------
-    Deduplicated list with feed_mentions accumulated.
+    Remove duplicate stories by title word-overlap (Jaccard similarity).
+    When a duplicate pair is found, the later article is removed and its
+    feed_mentions count is added to the survivor.
     """
     if len(articles) < 2:
         return articles
 
-    word_sets: list[set[str]] = [_title_words(a["title"]) for a in articles]
+    word_sets = [_title_words(a["title"]) for a in articles]
     remove: set[int] = set()
 
     for i in range(len(articles)):
@@ -127,7 +110,7 @@ def global_jaccard_dedup(articles: list[dict]) -> list[dict]:
             if not ws_j:
                 continue
 
-            union   = ws_i | ws_j
+            union = ws_i | ws_j
             overlap = len(ws_i & ws_j) / len(union) if union else 0.0
 
             if overlap >= CROSS_SECTOR_THRESHOLD:
@@ -143,154 +126,7 @@ def global_jaccard_dedup(articles: list[dict]) -> list[dict]:
 
 
 # =============================================================================
-# Step 2 — Global LLM deduplication
-# =============================================================================
-
-def global_llm_dedup(articles: list[dict], client: OpenAI) -> list[dict]:
-    """
-    Multi-round convergent LLM deduplication.
-
-    How it works
-    ------------
-    Each round shuffles the pool, then splits into batches of DEDUP_MAX_CANDIDATES
-    and deduplicates each batch. Shuffling is critical: it breaks the original
-    batch boundaries so articles that were in different batches last round get
-    paired together this round.
-
-    Example — LiteLLM pair (share only 1 title word, needs LLM to match):
-      "LiteLLM Hacked, Malware Targets Kubernetes Clusters"
-      "LiteLLM Backdoored via Trivy CI/CD Compromise"
-      Round 1: both in different batches -> missed
-      Round 2: shuffle -> now in same batch -> caught ✓
-
-    Convergence
-    -----------
-    Rounds continue until the pool fits in a single batch (final pass) or
-    no articles were removed in a round (converged). Capped at DEDUP_MAX_ROUNDS
-    to keep runtime predictable.
-
-    Survivors carry accumulated feed_mentions so the "buzz" signal is preserved.
-    """
-    if len(articles) <= 1:
-        return articles
-
-    original_count = len(articles)
-
-    for round_num in range(1, DEDUP_MAX_ROUNDS + 1):
-        before = len(articles)
-
-        if len(articles) <= DEDUP_MAX_CANDIDATES:
-            # Small enough for a single call — final definitive pass
-            articles = _dedup_batch(articles, client)
-            print(f"  LLM dedup round {round_num} (final): {before} -> {len(articles)}")
-            break
-
-        # Shuffle before each round to mix articles across original batch boundaries
-        random.shuffle(articles)
-
-        result: list[dict] = []
-        for i in range(0, len(articles), DEDUP_MAX_CANDIDATES):
-            result.extend(_dedup_batch(articles[i : i + DEDUP_MAX_CANDIDATES], client))
-        articles = result
-
-        removed_this_round = before - len(articles)
-        print(f"  LLM dedup round {round_num}: {before} -> {len(articles)}"
-              + (f" (-{removed_this_round})" if removed_this_round else " (no change)"))
-
-        if removed_this_round == 0:
-            # Pool has converged — no point running more rounds
-            break
-
-    total_removed = original_count - len(articles)
-    print(f"  LLM dedup total: {original_count} -> {len(articles)} ({total_removed} removed)")
-    return articles
-
-
-def _dedup_batch(articles: list[dict], client: OpenAI, *, skip_irrelevant: bool = False) -> list[dict]:
-    """Run LLM dedup on a single batch of articles. Returns deduplicated list.
-
-    Parameters
-    ----------
-    skip_irrelevant : bool
-        If True, ignore the LLM's "irrelevant" list — useful for the final
-        dedup pass where articles have already been vetted by the filter.
-    """
-    if len(articles) <= 1:
-        return articles
-
-    payload = [
-        {
-            "index":   i,
-            "title":   a["title"],
-            "source":  a["source"],
-            "excerpt": (a.get("scraped") or a.get("summary") or "")[:DEDUP_EXCERPT_CHARS],
-        }
-        for i, a in enumerate(articles)
-    ]
-
-    prompt = DEDUP_PROMPT.format(articles=json.dumps(payload, ensure_ascii=False))
-
-    try:
-        response = client.chat.completions.create(
-            model=DEDUP_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=DEDUP_TEMPERATURE,
-            response_format={"type": "json_object"},
-            max_tokens=4096,
-        )
-        data     = json.loads(response.choices[0].message.content)
-        clusters = data.get("clusters", [])
-
-        # Collect irrelevant indices (lenient gate — obvious non-AI noise only)
-        # Skip this entirely for the post-filter pass — those articles were already approved.
-        if skip_irrelevant:
-            irrelevant: set[int] = set()
-        else:
-            irrelevant = {
-                i for i in data.get("irrelevant", [])
-                if isinstance(i, int) and 0 <= i < len(articles)
-            }
-            if irrelevant:
-                print(f"  [dedup] pre-filter dropped {len(irrelevant)} irrelevant article(s)")
-
-        seen: set[int] = set()
-        valid_clusters: list[list[int]] = []
-
-        for cluster in clusters:
-            valid = [
-                i for i in cluster
-                if isinstance(i, int) and 0 <= i < len(articles)
-                and i not in seen and i not in irrelevant
-            ]
-            if valid:
-                valid_clusters.append(valid)
-                seen.update(valid)
-
-        for i in range(len(articles)):
-            if i not in seen and i not in irrelevant:
-                valid_clusters.append([i])
-
-        kept: list[dict] = []
-        for cluster in valid_clusters:
-            best_idx = max(
-                cluster,
-                key=lambda idx: len(articles[idx].get("scraped") or articles[idx].get("summary") or "")
-            )
-            survivor = articles[best_idx]
-            survivor["feed_mentions"] = sum(
-                articles[idx].get("feed_mentions", 1) for idx in cluster
-            )
-            kept.append(survivor)
-
-        return kept
-
-    except Exception as exc:
-        print(f"  [!] LLM dedup batch failed, skipping: {exc}")
-        return articles
-
-
-# =============================================================================
-# Step 3 — Parallel scraping
+# Step 2 — Light scrape (all articles)
 # =============================================================================
 
 def scrape_all(articles: list[dict]) -> list[dict]:
@@ -303,120 +139,40 @@ def scrape_all(articles: list[dict]) -> list[dict]:
 
 
 # =============================================================================
-# Step 4 — LLM editorial filter
+# Step 3 — LLM Triage (single call: select + score + categorize + tier)
 # =============================================================================
 
-def llm_filter(articles: list[dict], client: OpenAI) -> list[dict]:
+def llm_triage(articles: list[dict], client: OpenAI) -> list[dict]:
     """
-    Single LLM call that selects the top ~30-45 most important AI stories
-    from the full candidate pool.
+    Single LLM call that selects the top 12-15 articles from the candidate pool,
+    scoring, categorizing, and classifying tier in one pass.
 
-    Returns only the selected articles.
+    Replaces the old dedup + filter + summarize pipeline (3+ LLM calls).
     """
     # Round-robin sample so no source dominates
     candidates = _round_robin(articles, MAX_CANDIDATES)
 
     payload = [
         {
-            "index":   i,
-            "title":   a["title"],
-            "source":  a["source"],
-            "buzz":    a.get("feed_mentions", 1),
-            "excerpt": (a.get("scraped") or a.get("summary") or "")[:FILTER_EXCERPT_CHARS],
+            "index":       i,
+            "title":       a["title"],
+            "source":      a["source"],
+            "source_type": (
+                "official" if a["source"] in OFFICIAL_SOURCES
+                else "news" if a["source"] in NEWS_SOURCES
+                else "secondary"
+            ),
+            "buzz":        a.get("feed_mentions", 1),
+            "excerpt":     (a.get("scraped") or a.get("summary") or "")[:TRIAGE_EXCERPT_CHARS],
         }
         for i, a in enumerate(candidates)
     ]
 
     category_tags_str = "\n".join(f"- {c}" for c in CATEGORY_LIST)
-    prompt = FILTER_PROMPT.format(
-        category_tags=category_tags_str,
-        articles=json.dumps(payload, ensure_ascii=False),
-    )
+    today = date.today().isoformat()
 
-    try:
-        response = client.chat.completions.create(
-            model=FILTER_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=FILTER_TEMPERATURE,
-            response_format={"type": "json_object"},
-        )
-        data = json.loads(response.choices[0].message.content)
-
-        def _to_valid_indices(key: str) -> list[int]:
-            return [
-                int(v) for v in data.get(key, [])
-                if isinstance(v, (int, float)) and 0 <= int(v) < len(candidates)
-            ]
-
-        relevant_idx = _to_valid_indices("relevant")
-        selected_idx = _to_valid_indices("selected")
-
-        selected_set = set(selected_idx)
-        dropped = [candidates[i] for i in range(len(candidates)) if i not in selected_set]
-        print(f"  Filter: {len(relevant_idx)} relevant -> {len(selected_idx)} selected"
-              f" ({len(dropped)} dropped)")
-        print(f"  [filter-kept]    " + " | ".join(candidates[i]["title"][:60] for i in selected_idx))
-        print(f"  [filter-dropped] " + " | ".join(a["title"][:60] for a in dropped))
-
-        selected = [candidates[i] for i in selected_idx]
-        return selected
-
-    except Exception as exc:
-        print(f"  [!] Filter failed: {exc} — using first 30 candidates as fallback")
-        return candidates[:30]
-
-
-# =============================================================================
-# Step 5 — LLM summarise + categorise
-# =============================================================================
-
-def llm_summarize_and_categorize(articles: list[dict], client: OpenAI) -> list[dict]:
-    """
-    Generate ai_title, ai_summary, category, and score for each article.
-
-    Processes in batches of 20 to keep payloads manageable.
-    Category is validated against CATEGORY_LIST; invalid values fall back
-    to "AI Applications".
-    """
-    if not articles:
-        return articles
-
-    category_tags_str = "\n".join(f"- {c}" for c in CATEGORY_LIST)
-    valid_categories  = set(CATEGORY_LIST)
-
-    # Process in batches of 20
-    batch_size = 20
-    for batch_start in range(0, len(articles), batch_size):
-        batch = articles[batch_start : batch_start + batch_size]
-        _summarize_batch(batch, client, category_tags_str, valid_categories)
-
-    return articles
-
-
-def _summarize_batch(
-    articles: list[dict],
-    client: OpenAI,
-    category_tags_str: str,
-    valid_categories: set[str],
-) -> None:
-    """Summarize and categorize a single batch. Modifies articles in-place."""
-    if not articles:
-        return
-
-    payload = [
-        {
-            "index":          i,
-            "original_title": a["title"],
-            "source":         a["source"],
-            "buzz":           a.get("feed_mentions", 1),
-            "content":        (a.get("scraped") or a.get("summary") or "")[:SUMMARIZE_CONTENT_CHARS],
-        }
-        for i, a in enumerate(articles)
-    ]
-
-    from datetime import date
-    prompt = SUMMARIZE_PROMPT.format(
-        today_date=date.today().isoformat(),
+    prompt = TRIAGE_PROMPT.format(
+        today_date=today,
         category_tags=category_tags_str,
         category_descriptions=CATEGORY_DESCRIPTIONS,
         articles=json.dumps(payload, ensure_ascii=False),
@@ -424,300 +180,101 @@ def _summarize_batch(
 
     try:
         response = client.chat.completions.create(
-            model=SUMMARIZE_MODEL,
+            model=TRIAGE_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=SUMMARIZE_TEMPERATURE,
+            temperature=TRIAGE_TEMPERATURE,
             response_format={"type": "json_object"},
         )
-
         data = json.loads(response.choices[0].message.content)
-        result_map = {
-            int(r["index"]): r
-            for r in data.get("articles", [])
-            if "index" in r
-        }
 
-        for i, article in enumerate(articles):
-            r = result_map.get(i, {})
+        valid_categories = set(CATEGORY_LIST)
+        selected = []
 
-            article["ai_title"]   = r.get("title")   or None
-            article["ai_summary"] = r.get("summary") or None
+        for item in data.get("selected", []):
+            idx = item.get("index")
+            if not isinstance(idx, int) or idx < 0 or idx >= len(candidates):
+                continue
 
-            # Trending Repos & Papers repos always get their own category — don't let
-            # the LLM assign them to "Research & Open Source" or similar.
+            article = candidates[idx]
+
+            # Score
+            raw_score = item.get("score")
+            try:
+                article["score"] = int(raw_score) if raw_score is not None else 5
+            except (ValueError, TypeError):
+                article["score"] = 5
+
+            # Category
+            cat = item.get("category", "")
             if article.get("is_github"):
                 article["category"] = "Trending Repos & Papers"
             else:
-                cat = r.get("category") or None
                 article["category"] = cat if cat in valid_categories else "AI Applications"
-            # Store in sector column for DB compatibility
             article["sector"] = article["category"]
 
-            raw_score = r.get("score")
+            # Story tier
+            raw_tier = item.get("story_tier")
             try:
-                article["score"] = int(raw_score) if raw_score is not None else None
+                article["story_tier"] = int(raw_tier) if raw_tier is not None else 0
             except (ValueError, TypeError):
-                article["score"] = None
+                article["story_tier"] = 0
+
+            # Primary source flag
+            article["is_primary"] = bool(item.get("is_primary", True))
+
+            # Reasoning (for debugging)
+            article["triage_reason"] = item.get("reason", "")
+
+            selected.append(article)
+
+        # Apply buzz boost (only scoring adjustment we keep)
+        for a in selected:
+            mentions = a.get("feed_mentions", 1)
+            buzz_boost = min(mentions - 1, FEED_MENTION_BOOST_CAP)
+            a["score"] = a["score"] + buzz_boost
+
+        print(f"  Triage: {len(selected)} selected from {len(candidates)} candidates")
+        for a in selected:
+            print(f"    [{a['score']:>2}] [tier={a.get('story_tier',0)}] "
+                  f"{'P' if a.get('is_primary') else 'S'} | {a['title'][:60]}")
+
+        return selected
 
     except Exception as exc:
-        print(f"  [!] Summarize batch failed: {exc}")
-        for a in articles:
-            a.setdefault("ai_title",   None)
-            a.setdefault("ai_summary", None)
-            default_cat = "Trending Repos & Papers" if a.get("is_github") else "AI Applications"
-            a.setdefault("category",   default_cat)
-            a.setdefault("sector",     default_cat)
-            a.setdefault("score",       None)
+        print(f"  [!] Triage failed: {exc} — using first 15 candidates as fallback")
+        for a in candidates[:15]:
+            a.setdefault("score", 5)
+            a.setdefault("category", "AI Applications")
+            a.setdefault("sector", "AI Applications")
+            a.setdefault("story_tier", 0)
+        return candidates[:15]
 
 
 # =============================================================================
-# Step 6 — Score bonuses
+# Step 4 — Deep scrape (selected articles only)
 # =============================================================================
 
-# Categories that get a +1 priority bonus (top of the newsletter)
-_HIGH_PRIORITY_CATEGORIES = frozenset({
-    "Model Releases",
-    "Products & Features",
-    "RAG, Agents & Techniques",
-    "Productivity & Efficiency",
-})
-
-# Categories that get a -1 penalty — pushed toward quick hits, not top stories
-_LOW_PRIORITY_CATEGORIES = frozenset({
-    "Business & Funding",
-})
-
-# Article title keywords that signal a big AI lab story — gets a +1 company boost
-# even when the article comes from a secondary source (TechCrunch, The Verge, etc.)
-_TIER1_COMPANY_KEYWORDS = frozenset({
-    "openai", "anthropic", "google", "deepmind", "gemini", "gpt",
-    "claude", "meta ai", "llama", "mistral", "grok", "xai",
-    "perplexity", "deepseek", "qwen", "baidu", "ernie",
-    "zhipu", "moonshot", "kimi", "minimax", "01.ai",
-})
-
-# Official source feeds (direct company blogs) — get +1 source-origin bonus
-# These are primary sources: when an official announcement and secondary coverage
-# both exist, the official should rank higher.
-_OFFICIAL_SOURCE_FEEDS = frozenset({
-    # Official lab blogs (WEB_SOURCES)
-    "Anthropic Blog",
-    "Mistral AI Blog",
-    "Cursor Blog",
-    "Windsurf Blog",
-    # Official RSS feeds
-    "OpenAI News",
-    "Google DeepMind",
-    "Google AI Blog",
-    "Google Research",
-    "Microsoft Research",
-    "NVIDIA Blog",
-    "Apple ML",
-    "AWS News Blog - AI",
-    "Google Cloud AI Blog",
-    "Azure AI Blog",
-    "Berkeley AI (BAIR)",
-    "CMU ML Blog",
-    "MIT AI News",
-    "GitHub Blog",
-    "DeepMind Blog",
-    "Meta News",
-    "Databricks Blog",
-    "Hugging Face Blog",
-    "LangChain",
-    "Replicate Blog",
-    # Enterprise AI research labs
-    "Salesforce Research",
-    "Salesforce Blog",
-    "IBM Research",
-    "Adobe Research",
-})
-
-# Secondary aggregator feeds (Medium, Towards AI, etc.) — get -0.5 source-origin penalty
-# These feeds republish/analyze news rather than breaking it. When competing with
-# official sources, they should rank slightly lower to ensure readers see original.
-_SECONDARY_AGGREGATOR_FEEDS = frozenset({
-    "Medium – AI tag",
-    "Medium – LLM tag",
-    "Medium – Machine Learning tag",
-    "Towards AI – Medium",
-    "Towards Data Science",
-})
-
-def apply_score_bonuses(articles: list[dict]) -> list[dict]:
-    """
-    Adjust LLM-assigned scores based on signals the LLM can't see:
-
-    Tier-based priority bonus (story_tier field from SUMMARIZE_PROMPT)
-      story_tier=1 (big-tech release): +3 — always top stories
-      story_tier=2 (significant non-big-tech innovation): +2 — strong contenders
-      story_tier=3 (genuine technique/improvement): +1 — fills remaining top story slots
-      story_tier=0 (business, generic how-to, opinion): +0 — quick hits only
-
-    Source-origin bonus/penalty
-      Official source feeds (+1): direct company blogs, official news feeds
-      Secondary aggregators (-0.5): Medium, Towards AI, etc. republish news
-      This ensures when both official announcement and secondary coverage exist,
-      official sources rank higher.
-
-    Secondary recency penalty (-0.5 for 3+ day old articles)
-      Articles from secondary sources (Medium, TechCrunch, etc.) published 3+ days
-      after the original announcement are likely stale commentary, not breaking news.
-      These get an additional penalty to keep fresh, original reporting at the top.
-
-    Feed mention bonus
-      An article that appeared in 3 independent feeds is more newsworthy
-      than one from a single source. Bonus = min(feed_mentions - 1, cap).
-
-    Source tier bonus (config.py TIER1_SOURCES)
-      Official blogs from the TIER1_SOURCES list get an additional boost.
-
-    Company keyword bonus
-      Articles about major AI labs (OpenAI, Anthropic, Google, Mistral, xAI,
-      Perplexity, Chinese AI companies) get +1 when from secondary sources,
-      ensuring big-lab news competes with tier-1 blog posts.
-
-    Business & Funding penalty
-      Funding rounds and business deals get -1 to push them toward quick hits
-      rather than top stories, unless they score very high on their own merit.
-
-    Final formula:
-      score = base_score + tier_priority_bonus + source_origin_bonus + mention_bonus
-              + tier_bonus + company_bonus - category_penalty - secondary_recency_penalty
-
-    All scores are clamped to [1, 10] in _validate_articles (Step 10).
-    """
-    for a in articles:
-        score = a.get("score")
-        if score is None:
-            continue
-
-        source = a.get("source", "")
-
-        # Source-origin weighting: official sources rank higher than secondary
-        if source in _OFFICIAL_SOURCE_FEEDS:
-            source_origin_bonus = 1
-        elif source in _SECONDARY_AGGREGATOR_FEEDS:
-            source_origin_bonus = -0.5
-        else:
-            source_origin_bonus = 0
-
-        mentions      = a.get("feed_mentions", 1)
-        mention_bonus = min(mentions - 1, FEED_MENTION_BOOST_CAP)
-
-        tier_bonus = SOURCE_TIER1_BOOST if source in TIER1_SOURCES else 0
-
-        # Tier-based priority bonus (using story_tier field from LLM)
-        # This replaces category_bonus with explicit tier classification
-        story_tier = a.get("story_tier", 0)
-        if story_tier == 1:
-            tier_priority_bonus = 3  # Big-tech releases — always top stories
-        elif story_tier == 2:
-            tier_priority_bonus = 2  # Significant non-big-tech innovation — strong contender
-        elif story_tier == 3:
-            tier_priority_bonus = 1  # Genuine technique — fills remaining top story slots
-        else:  # story_tier == 0 or missing
-            tier_priority_bonus = 0  # Business, opinion, generic how-to -> quick hits
-
-        # Secondary source recency penalty: if from Medium/secondary aggregator
-        # and article is 3+ days old, it's likely stale commentary, not breaking news
-        secondary_recency_penalty = 0
-        if source in _SECONDARY_AGGREGATOR_FEEDS:
-            published_str = a.get("published_at")
-            if published_str:
-                try:
-                    published_date = datetime.fromisoformat(published_str.replace('Z', '+00:00'))
-                    days_old = (datetime.now(published_date.tzinfo) - published_date).days
-                    if days_old >= 3:
-                        secondary_recency_penalty = 0.5  # Penalize stale secondary coverage
-                except (ValueError, TypeError, AttributeError):
-                    pass
-
-        # Company keyword boost for major AI lab stories from secondary sources
-        title_lower = (a.get("ai_title") or a.get("title") or "").lower()
-        company_bonus = (
-            1 if any(kw in title_lower for kw in _TIER1_COMPANY_KEYWORDS)
-            and source not in TIER1_SOURCES
-            and a.get("category") not in ("Business & Funding",)
-            else 0
-        )
-
-        category_penalty = 1 if a.get("category") in _LOW_PRIORITY_CATEGORIES else 0
-
-        a["score"] = (score + tier_priority_bonus + source_origin_bonus + mention_bonus
-                      + tier_bonus + company_bonus - category_penalty - secondary_recency_penalty)
-
+def deep_scrape(articles: list[dict]) -> list[dict]:
+    """Re-scrape selected articles with higher char limit for richer content."""
+    scraper = ArticleScraper()
+    scraper.deep_scrape_articles(articles, max_chars=DEEP_SCRAPE_MAX_CHARS)
+    avg_len = sum(len(a.get("scraped", "")) for a in articles) // max(len(articles), 1)
+    print(f"  Deep scrape: avg {avg_len} chars per article")
     return articles
 
 
 # =============================================================================
-# Step 7 — Dynamic score gate
-# =============================================================================
-
-def apply_score_gate(articles: list[dict]) -> list[dict]:
-    """
-    Apply a waterfall of score thresholds until we reach PUBLISH_MIN_ARTICLES
-    total across the pool. Returns articles passing the threshold.
-    Model Releases and pinned articles always pass regardless of score.
-    """
-    all_thresholds = [PUBLISH_THRESHOLD] + list(PUBLISH_THRESHOLD_FALLBACKS)
-
-    # Model Releases always pass — these are high-signal by definition
-    _ALWAYS_PASS_CATEGORIES = {"Model Releases"}
-
-    for threshold in all_thresholds:
-        candidates = [
-            a for a in articles
-            if (a.get("score") or 0) >= threshold
-            or a.get("category") in _ALWAYS_PASS_CATEGORIES
-        ]
-        if len(candidates) >= PUBLISH_MIN_ARTICLES:
-            dropped = [a for a in articles if a not in candidates]
-            suffix = f" (lowered from {PUBLISH_THRESHOLD})" if threshold < PUBLISH_THRESHOLD else ""
-            print(f"  Score gate: {len(candidates)}/{len(articles)} scored >={threshold}{suffix}")
-            if dropped:
-                print(f"  [score-dropped] " + " | ".join(
-                    f"{a.get('title', '')[:50]} (score={a.get('score')}, cat={a.get('category', '?')})"
-                    for a in dropped
-                ))
-            return candidates
-
-    lowest = all_thresholds[-1]
-    result = [
-        a for a in articles
-        if (a.get("score") or 0) >= lowest
-        or a.get("category") in _ALWAYS_PASS_CATEGORIES
-    ]
-    dropped = [a for a in articles if a not in result]
-    print(f"  Score gate: {len(result)}/{len(articles)} scored >={lowest} (lowest fallback)")
-    if dropped:
-        print(f"  [score-dropped] " + " | ".join(
-            f"{a.get('title', '')[:50]} (score={a.get('score')}, cat={a.get('category', '?')})"
-            for a in dropped
-        ))
-    return result
-
-
-# =============================================================================
-# Step 8 — Diversity enforcement + per-category cap
+# Step 5 — Diversity enforcement + per-category cap
 # =============================================================================
 
 def enforce_diversity_and_caps(articles: list[dict]) -> list[dict]:
     """
-    Cap the number of articles from the same source and same category
-    in the final published list to ensure variety for the reader.
-
-    Articles are processed in score-descending order so the highest-scored
-    pieces are always retained when a cap is reached.
-
-    Caps (configured in config.py):
-      MAX_ARTICLES_PER_SOURCE        — prevents source dominance
-      MAX_ARTICLES_PER_CATEGORY      — per-category cap for balance
-      MAX_ARTICLES_PER_BONUS_CATEGORY — lower cap for Tutorials & GitHub categories
+    Cap articles from same source and same category. Articles processed in
+    score-descending order so highest-scored pieces are always retained.
     """
     _BONUS_CATEGORIES = {"Tutorials & Guides", "Trending Repos & Papers"}
 
-    source_count:   dict[str, int] = {}
+    source_count: dict[str, int] = {}
     category_count: dict[str, int] = {}
     result: list[dict] = []
     dropped: list[tuple[dict, str]] = []
@@ -727,7 +284,7 @@ def enforce_diversity_and_caps(articles: list[dict]) -> list[dict]:
         cat = a.get("category", "")
         cat_cap = MAX_ARTICLES_PER_BONUS_CATEGORY if cat in _BONUS_CATEGORIES else MAX_ARTICLES_PER_CATEGORY
 
-        # Model releases from any source always pass — never let source cap bury a launch
+        # Model releases always pass source cap
         is_model_release = cat == "Model Releases"
 
         if not is_model_release and source_count.get(src, 0) >= MAX_ARTICLES_PER_SOURCE:
@@ -751,37 +308,41 @@ def enforce_diversity_and_caps(articles: list[dict]) -> list[dict]:
 
 
 # =============================================================================
-# Step 9 — Two-tier enrichment (top stories + quick hits)
+# Step 6 — Two-tier enrichment (top stories + quick hits)
 # =============================================================================
 
 def llm_enrich_top_stories(articles: list[dict], client: OpenAI) -> None:
     """
-    Generate overview, details, why_it_matters, and company_tag for top stories.
-    These articles already have ai_title, ai_summary, category, score from step 5.
+    Generate ai_title, ai_summary, key_points, and company_tag for top stories.
+    Also performs freshness verification (is_stale flag).
+    Uses deep-scraped content for richer extraction.
     Modifies articles in-place.
     """
     if not articles:
         return
 
+    today = date.today().isoformat()
+
     payload = [
         {
             "index":   i,
-            "title":   a.get("ai_title") or a["title"],
+            "title":   a["title"],
             "source":  a["source"],
-            "content": (a.get("scraped") or a.get("summary") or "")[:SUMMARIZE_CONTENT_CHARS],
+            "content": (a.get("scraped") or a.get("summary") or "")[:ENRICH_CONTENT_CHARS],
         }
         for i, a in enumerate(articles)
     ]
 
     prompt = ENRICH_TOP_STORY_PROMPT.format(
+        today_date=today,
         articles=json.dumps(payload, ensure_ascii=False),
     )
 
     try:
         response = client.chat.completions.create(
-            model=SUMMARIZE_MODEL,
+            model=ENRICH_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=SUMMARIZE_TEMPERATURE,
+            temperature=ENRICH_TEMPERATURE,
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
@@ -793,18 +354,22 @@ def llm_enrich_top_stories(articles: list[dict], client: OpenAI) -> None:
 
         for i, article in enumerate(articles):
             r = result_map.get(i, {})
-            article["overview"]       = r.get("overview") or article.get("ai_summary", "")
-            article["details"]        = json.dumps(r.get("details", []))
+            article["ai_title"]       = r.get("ai_title") or None
+            article["ai_summary"]     = r.get("ai_summary") or ""
+            # Map to DB-compatible fields
+            article["overview"]       = article["ai_summary"]
+            article["details"]        = json.dumps(r.get("key_points", []))
             article["why_it_matters"] = r.get("why_it_matters", "")
             article["company_tag"]    = r.get("company_tag", "")
             article["is_top_story"]   = 1
-            # Keep ai_summary populated for backward compat (web app, old email builder)
-            article["ai_summary"]     = article["overview"]
+            article["is_stale"]       = r.get("is_stale", False)
 
     except Exception as exc:
         print(f"  [!] Top story enrichment failed: {exc}")
         for a in articles:
             a["is_top_story"] = 1
+            a.setdefault("ai_title", None)
+            a.setdefault("ai_summary", a.get("summary", ""))
             a.setdefault("overview", a.get("ai_summary", ""))
             a.setdefault("details", "[]")
             a.setdefault("why_it_matters", "")
@@ -813,8 +378,7 @@ def llm_enrich_top_stories(articles: list[dict], client: OpenAI) -> None:
 
 def llm_enrich_quick_hits(articles: list[dict], client: OpenAI) -> None:
     """
-    Generate one_liner and company_tag for quick hit articles.
-    These articles already have ai_title, ai_summary, category, score from step 5.
+    Generate ai_title, one_liner, and company_tag for quick hit articles.
     Modifies articles in-place.
     """
     if not articles:
@@ -823,9 +387,9 @@ def llm_enrich_quick_hits(articles: list[dict], client: OpenAI) -> None:
     payload = [
         {
             "index":   i,
-            "title":   a.get("ai_title") or a["title"],
+            "title":   a["title"],
             "source":  a["source"],
-            "content": (a.get("scraped") or a.get("summary") or "")[:SUMMARIZE_CONTENT_CHARS],
+            "content": (a.get("scraped") or a.get("summary") or "")[:ENRICH_CONTENT_CHARS],
         }
         for i, a in enumerate(articles)
     ]
@@ -836,9 +400,9 @@ def llm_enrich_quick_hits(articles: list[dict], client: OpenAI) -> None:
 
     try:
         response = client.chat.completions.create(
-            model=SUMMARIZE_MODEL,
+            model=ENRICH_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=SUMMARIZE_TEMPERATURE,
+            temperature=ENRICH_TEMPERATURE,
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
@@ -850,22 +414,23 @@ def llm_enrich_quick_hits(articles: list[dict], client: OpenAI) -> None:
 
         for i, article in enumerate(articles):
             r = result_map.get(i, {})
-            article["one_liner"]    = r.get("one_liner") or article.get("ai_summary", "")
-            article["company_tag"]  = r.get("company_tag", "")
+            article["ai_title"]    = r.get("ai_title") or None
+            article["one_liner"]   = r.get("one_liner") or article.get("ai_summary", "")
+            article["company_tag"] = r.get("company_tag", "")
             article["is_top_story"] = 0
-            # Keep ai_summary populated for backward compat
-            article["ai_summary"]   = article["one_liner"]
+            article["ai_summary"]  = article["one_liner"]
 
     except Exception as exc:
         print(f"  [!] Quick hit enrichment failed: {exc}")
         for a in articles:
             a["is_top_story"] = 0
+            a.setdefault("ai_title", None)
             a.setdefault("one_liner", a.get("ai_summary", ""))
             a.setdefault("company_tag", "")
 
 
 # =============================================================================
-# Step 10 — Output validation
+# Step 7 — Output validation
 # =============================================================================
 
 def _validate_articles(articles: list[dict]) -> None:
@@ -888,15 +453,11 @@ def _validate_articles(articles: list[dict]) -> None:
 
 
 # =============================================================================
-# Module-level helper
+# Helper
 # =============================================================================
 
 def _round_robin(articles: list[dict], limit: int) -> list[dict]:
-    """
-    Return up to `limit` articles sampled round-robin across sources.
-
-    Prevents a single prolific source from filling the entire candidate pool.
-    """
+    """Return up to `limit` articles sampled round-robin across sources."""
     by_source: dict[str, list[dict]] = {}
     for article in articles:
         by_source.setdefault(article["source"], []).append(article)
@@ -913,14 +474,13 @@ def _round_robin(articles: list[dict], limit: int) -> list[dict]:
 
 
 # =============================================================================
-# Public API  (called from main.py)
+# Public API — summarize_pinned (for GitHub/HF pinned articles)
 # =============================================================================
 
 def summarize_pinned(articles: list[dict]) -> list[dict]:
     """
-    Run only the summarise + categorise step on pinned articles (GitHub repo + HF paper).
-    Forces category to 'Trending Repos & Papers' and sets is_featured=1.
-    Called from main.py after run_pipeline().
+    Run a lightweight summarise on pinned articles (GitHub repo + HF paper).
+    These bypass the main pipeline entirely.
     """
     if not articles:
         return []
@@ -928,7 +488,65 @@ def summarize_pinned(articles: list[dict]) -> list[dict]:
     if not api_key:
         return articles
     client = OpenAI(api_key=api_key)
-    llm_summarize_and_categorize(articles, client)
+
+    # Use a simple summarize call for pinned articles
+    payload = [
+        {
+            "index":          i,
+            "original_title": a["title"],
+            "source":         a["source"],
+            "content":        (a.get("scraped") or a.get("summary") or "")[:1000],
+        }
+        for i, a in enumerate(articles)
+    ]
+
+    from collector.prompts import CATEGORY_LIST as _cats
+    categories_str = ", ".join(f'"{c}"' for c in _cats)
+    articles_json = json.dumps(payload, ensure_ascii=False)
+    prompt = (
+        f'For each article below, write:\n'
+        f'- "title": punchy headline, 10 words or fewer\n'
+        f'- "summary": 2-3 sentences (60-90 words)\n'
+        f'- "category": one of [{categories_str}]\n'
+        f'- "score": 1-10 editorial importance\n\n'
+        f'Return strictly valid JSON, no prose, no markdown:\n'
+        f'{{"articles": [{{"index": 0, "title": "...", "summary": "...", '
+        f'"category": "...", "score": 5}}, ...]}}\n\n'
+        f'Articles:\n{articles_json}'
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=SUMMARIZE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=SUMMARIZE_TEMPERATURE,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(response.choices[0].message.content)
+        result_map = {int(r["index"]): r for r in data.get("articles", []) if "index" in r}
+
+        valid_categories = set(_cats)
+        for i, article in enumerate(articles):
+            r = result_map.get(i, {})
+            article["ai_title"]   = r.get("title") or None
+            article["ai_summary"] = r.get("summary") or None
+            cat = r.get("category", "")
+            article["category"] = cat if cat in valid_categories else "Trending Repos & Papers"
+            article["sector"]   = article["category"]
+            raw_score = r.get("score")
+            try:
+                article["score"] = int(raw_score) if raw_score is not None else 5
+            except (ValueError, TypeError):
+                article["score"] = 5
+    except Exception as exc:
+        print(f"  [!] Pinned summarize failed: {exc}")
+        for a in articles:
+            a.setdefault("ai_title", None)
+            a.setdefault("ai_summary", None)
+            a.setdefault("category", "Trending Repos & Papers")
+            a.setdefault("sector", "Trending Repos & Papers")
+            a.setdefault("score", 5)
+
     for a in articles:
         a["category"]    = "Trending Repos & Papers"
         a["sector"]      = "Trending Repos & Papers"
@@ -936,30 +554,27 @@ def summarize_pinned(articles: list[dict]) -> list[dict]:
     return articles
 
 
+# =============================================================================
+# Public API — run_pipeline (called from main.py)
+# =============================================================================
+
 def run_pipeline(articles: list[dict]) -> list[dict]:
     """
-    Full global pool pipeline for regular articles. Pinned articles
-    (GitHub trending repo + HF paper) are handled separately in main.py
-    via summarize_pinned() and never passed here.
+    Simplified pipeline for regular articles.
 
     Steps:
-      1. Global Jaccard dedup
-      2. Global LLM dedup (batched)
-      3. Scrape all articles in parallel
-      4. LLM editorial filter (global, picks top ~30-45)
-      5. Final dedup pass on filtered set
-      6. LLM summarise + categorise
-      7. Score bonuses
-      8. Score gate
-      9. Diversity enforcement + per-category cap
+      1. Jaccard dedup (free)
+      2. Light scrape all articles
+      3. LLM triage (single call: select + score + categorize + tier)
+      4. Deep scrape selected articles (richer content for enrichment)
+      5. Diversity enforcement
+      6. LLM enrich top stories (with freshness verification)
+      7. LLM enrich quick hits
+      8. Handle stale demotions
+      9. Output validation
 
     Returns only articles that passed all gates with is_featured=1.
     """
-    # Seed RNG with today's date so repeated runs on the same day produce
-    # the same shuffle order in global_llm_dedup, giving consistent results.
-    from datetime import date
-    random.seed(date.today().isoformat())
-
     if not articles:
         return []
 
@@ -973,47 +588,62 @@ def run_pipeline(articles: list[dict]) -> list[dict]:
 
     client = OpenAI(api_key=api_key)
 
-    print(f"\nStep 1/10: Jaccard dedup ({len(articles)} articles)...")
-    articles = global_jaccard_dedup(articles)
+    # Step 1: Jaccard dedup (free, no LLM)
+    print(f"\nStep 1/7: Jaccard dedup ({len(articles)} articles)...")
+    articles = jaccard_dedup(articles)
 
-    print(f"Step 2/10: LLM dedup ({len(articles)} articles)...")
-    articles = global_llm_dedup(articles, client)
-
-    print(f"Step 3/10: Scraping {len(articles)} article pages...")
+    # Step 2: Light scrape all articles
+    print(f"Step 2/7: Scraping {len(articles)} article pages...")
     articles = scrape_all(articles)
 
-    print(f"Step 4/10: LLM filter ({len(articles)} candidates)...")
-    articles = llm_filter(articles, client)
+    # Step 3: LLM triage (single call)
+    print(f"Step 3/7: LLM triage ({len(articles)} candidates)...")
+    articles = llm_triage(articles, client)
 
-    print(f"  Final dedup pass on {len(articles)} filtered articles...")
-    articles = _dedup_batch(articles, client, skip_irrelevant=True)
+    # Step 4: Deep scrape selected articles for richer content
+    print(f"Step 4/7: Deep scraping {len(articles)} selected articles...")
+    articles = deep_scrape(articles)
 
-    print(f"Step 5/10: LLM summarise + categorise ({len(articles)} articles)...")
-    articles = llm_summarize_and_categorize(articles, client)
-
-    print("Step 6/10: Applying score bonuses...")
-    articles = apply_score_bonuses(articles)
-
-    print("Step 7/10: Applying score gate...")
-    articles = apply_score_gate(articles)
-
-    print("Step 8/10: Enforcing diversity and per-category caps...")
+    # Step 5: Diversity enforcement
+    print("Step 5/7: Enforcing diversity and per-category caps...")
     articles = enforce_diversity_and_caps(articles)
 
-    # ── Step 9: Two-tier enrichment ──────────────────────────────────────────
-    # Articles are already sorted by score descending from step 8.
-    # Top N become deep stories, next M become quick hits.
+    # Step 6+7: Two-tier enrichment
+    # Sort by score descending, split into top stories + quick hits
+    articles = sorted(articles, key=lambda x: x.get("score") or 0, reverse=True)
     top_stories = articles[:TOP_STORY_COUNT]
     quick_hits  = articles[TOP_STORY_COUNT : TOP_STORY_COUNT + QUICK_HIT_COUNT]
 
-    print(f"Step 9/10: Enriching {len(top_stories)} top stories + {len(quick_hits)} quick hits...")
+    print(f"Step 6/7: Enriching {len(top_stories)} top stories + {len(quick_hits)} quick hits...")
     llm_enrich_top_stories(top_stories, client)
     llm_enrich_quick_hits(quick_hits, client)
 
-    # Recombine — top stories first, then quick hits
+    # Handle stale demotions: if a top story is flagged as stale,
+    # demote it to quick hits and promote the next candidate
+    stale_stories = [a for a in top_stories if a.get("is_stale")]
+    if stale_stories:
+        print(f"  [!] {len(stale_stories)} stale story(ies) detected — demoting:")
+        for a in stale_stories:
+            print(f"    - {a.get('ai_title') or a.get('title', '')[:60]}")
+            a["is_top_story"] = 0
+            # Move stale story to quick hits
+            top_stories.remove(a)
+            quick_hits.append(a)
+
+        # Promote next candidates from remaining pool if available
+        remaining = [a for a in articles
+                     if a not in top_stories and a not in quick_hits
+                     and a.get("score", 0) >= 4]
+        while len(top_stories) < TOP_STORY_COUNT and remaining:
+            promoted = remaining.pop(0)
+            # Quick enrich the promoted article as top story
+            llm_enrich_top_stories([promoted], client)
+            top_stories.append(promoted)
+
+    # Recombine
     articles = top_stories + quick_hits
 
-    print("Step 10/10: Validating output...")
+    print("Step 7/7: Validating output...")
     _validate_articles(articles)
 
     for a in articles:

@@ -191,9 +191,10 @@ class ArticleScraper:
         if og_desc:
             parts.append(og_desc[:400])
 
-        # Layer 3: Raw body paragraphs — only when no structured description exists.
-        # Avoids duplicating the description text in the final excerpt.
-        if not og_desc:
+        # Layer 3: Raw body paragraphs.
+        # For deep scrape (high max_body_chars), always include body text
+        # to get full article content. For light scrape, skip if we have a description.
+        if not og_desc or self.max_body_chars > 1500:
             body_text = self._body_text(soup)
             if body_text:
                 parts.append(body_text[: self.max_body_chars])
@@ -206,6 +207,7 @@ class ArticleScraper:
         Walk progressively broader content containers until we find enough
         paragraph text. Skips navigation/chrome tags defined in _SKIP_TAGS.
         Minimum paragraph length of 40 chars filters out "Read more" snippets.
+        Preserves URLs from <a> tags inline so the LLM can reference them.
         """
         containers = [
             soup.find("article"),
@@ -222,7 +224,7 @@ class ArticleScraper:
                 # Skip text inside navigation / UI chrome
                 if tag.find_parent(_SKIP_TAGS):
                     continue
-                text = tag.get_text(" ", strip=True)
+                text = self._text_with_links(tag)
                 if len(text) >= 40:
                     paragraphs.append(text)
                 if sum(len(p) for p in paragraphs) >= self.max_body_chars:
@@ -232,6 +234,32 @@ class ArticleScraper:
                 return " ".join(paragraphs)
 
         return ""
+
+    @staticmethod
+    def _text_with_links(tag) -> str:
+        """
+        Extract text from a tag, preserving URLs from <a> tags inline.
+        Turns '<a href="https://github.com/org/repo">on GitHub</a>' into
+        'on GitHub (https://github.com/org/repo)' so the LLM can see and
+        reference the actual URL.
+        """
+        from bs4 import NavigableString
+
+        parts: list[str] = []
+        for child in tag.descendants:
+            if isinstance(child, NavigableString):
+                text = child.strip()
+                if text:
+                    parts.append(text)
+            elif child.name == "a":
+                href = (child.get("href") or "").strip()
+                # Only preserve substantive URLs (skip anchors, JS, mailto)
+                if href and href.startswith("http") and len(href) < 200:
+                    link_text = child.get_text(strip=True)
+                    # Avoid duplicating if the link text IS the URL
+                    if href not in link_text:
+                        parts.append(f"({href})")
+        return " ".join(parts)
 
     # ── Static helpers ────────────────────────────────────────────────────────
 
@@ -251,6 +279,33 @@ class ArticleScraper:
     def _tag_text(tag) -> str:
         """Return stripped text content of a BeautifulSoup tag, or ''."""
         return tag.get_text(strip=True) if tag else ""
+
+
+    def deep_scrape_articles(self, articles: list[dict], max_chars: int = 5000) -> None:
+        """
+        Re-scrape articles with a higher character limit to get full article content.
+        Used after triage to get richer context for top story candidates.
+        Modifies articles in-place, updating the 'scraped' field.
+        """
+        deep_scraper = ArticleScraper(
+            timeout=self.timeout + 4,   # slightly longer timeout for deeper reads
+            max_workers=self.max_workers,
+            retries=self.retries,
+            retry_delay=self.retry_delay,
+            max_body_chars=max_chars,
+            max_excerpt=max_chars + 500,  # room for title + description + body
+        )
+
+        def _worker(article: dict) -> tuple[dict, str]:
+            excerpt, _ = deep_scraper.scrape_one(article["url"])
+            return article, excerpt
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
+            futures = {pool.submit(_worker, a): a for a in articles}
+            for future in as_completed(futures):
+                article, excerpt = future.result()
+                if excerpt and len(excerpt) > len(article.get("scraped", "")):
+                    article["scraped"] = excerpt
 
 
 # ── Module-level convenience wrapper (backward-compatible) ───────────────────

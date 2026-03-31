@@ -25,9 +25,7 @@ load_dotenv()
 from feeds import FEEDS, WEB_SOURCES
 from collector.rss import fetch_feed
 from collector.web_feed import fetch_web_sources
-from collector.github import fetch_trending
-from collector.hf_papers import fetch_top_paper
-from collector.ranker import run_pipeline, summarize_pinned
+from collector.ranker import run_pipeline
 from db.storage import get_db_path, init_db, save_articles
 from config import FEED_FETCH_WORKERS
 from email_builder import build_html, save_preview, send_to_beehiiv
@@ -88,28 +86,11 @@ def main() -> None:
     web_articles = fetch_web_sources(WEB_SOURCES)
     articles.extend(web_articles)
 
-    # ── Step 1c: Pinned articles — always 1 GitHub repo + 1 HF paper ─────────
-    # These are handled COMPLETELY outside run_pipeline so they can never be lost.
-    print("\nFetching top GitHub trending repo...")
-    gh_repos = fetch_trending(limit=25)
-    top_repo = sorted(gh_repos, key=lambda x: x.get("stars") or 0, reverse=True)[:1]
+    print(f"Total raw articles: {len(articles)}")
 
-    print("Fetching top HuggingFace trending paper...")
-    hf_paper = fetch_top_paper()
-    pinned = top_repo + ([hf_paper] if hf_paper else [])
-    print(f"  Pinned: {len(pinned)} article(s) — "
-          + ", ".join(a.get("source", "") for a in pinned))
-
-    print(f"Total raw articles (regular): {len(articles)}")
-
-    # ── Step 2: Run the full pipeline on regular articles only ───────────────
+    # ── Step 2: Run the full pipeline ────────────────────────────────────────
     print("\nRunning global AI ranking pipeline...")
     all_articles = run_pipeline(articles)
-
-    # ── Step 2b: Summarise pinned articles separately, then add ──────────────
-    print("\nSummarising pinned articles...")
-    pinned = summarize_pinned(pinned)
-    all_articles = all_articles + pinned
 
     # ── Step 3: Save to database ─────────────────────────────────────────────
     print(f"\nSaving {len(all_articles)} articles to database...")
