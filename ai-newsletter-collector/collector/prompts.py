@@ -57,7 +57,11 @@ Each article includes:
     "official" = company blog (OpenAI Blog, Anthropic Blog, etc.) — primary source of announcements
     "news" = same-day news outlet (TechCrunch, Reuters, The Decoder, etc.) — reports breaking news quickly
     "secondary" = blog/analysis source — often publishes days after the event, not breaking news
-- "buzz": how many independent feeds carried this story (higher = more important)
+- "buzz": how many independent feeds carried this story. \
+  buzz >= 4 means well-covered news — consider for top stories. \
+  buzz >= 6 means trending across the industry — strong top story signal. \
+  buzz >= 8 means viral news your readers will hear about everywhere — almost always a top story. \
+  Multi-source coverage is one of the strongest signals of importance. Weight it heavily
 
 THINK STEP BY STEP for each article:
 
@@ -88,6 +92,11 @@ the one from the more authoritative source (official blog > news outlet > second
 Do NOT include both — even if they have slightly different angles. Same story = one entry.
 
 SCORING GUARDRAILS (these override your reasoning):
+- BREAKING INCIDENTS — Leaks, accidental publications, security breaches, outages, \
+  or controversies involving major AI companies (OpenAI, Anthropic, Google, Meta, etc.): \
+  MINIMUM score 7, story_tier 2. These are stories developers WILL hear about and need \
+  context on. A source code leak, a data breach, a major outage — these are top story \
+  candidates, not signals. The AI community talks about these for days.
 - FUNDING ROUNDS — ANY article whose primary news is a company raising money, \
   regardless of what the company does (AI chips, coding tools, biotech, etc.): \
   MAXIMUM score 6, story_tier MUST be 0, category MUST be "Business & Funding". \

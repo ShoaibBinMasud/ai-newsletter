@@ -96,9 +96,19 @@ ENRICH_CONTENT_CHARS = 4000
 # 7. Scoring
 # =============================================================================
 
-# Maximum score boost for appearing in multiple feeds.
-# Formula: bonus = min(feed_mentions - 1, cap)
-FEED_MENTION_BOOST_CAP = 2
+# Tiered buzz boost — scales with how many outlets cover the story.
+# Each tuple is (min_mentions, bonus). The highest matching tier wins.
+#   1 mention  -> +0 (single source, no boost)
+#   2-3        -> +1 (moderately covered)
+#   4-5        -> +2 (well covered)
+#   6-7        -> +3 (trending)
+#   8+         -> +4 (viral — nearly guarantees top story)
+BUZZ_BOOST_TIERS: list[tuple[int, int]] = [
+    (2, 1),
+    (4, 2),
+    (6, 3),
+    (8, 4),
+]
 
 # =============================================================================
 # 8. Diversity Enforcement

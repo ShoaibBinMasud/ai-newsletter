@@ -28,7 +28,7 @@ from config import (
     MAX_CANDIDATES,
     CROSS_SECTOR_THRESHOLD,
     TRIAGE_EXCERPT_CHARS, ENRICH_CONTENT_CHARS,
-    FEED_MENTION_BOOST_CAP,
+    BUZZ_BOOST_TIERS,
     MAX_ARTICLES_PER_SOURCE, MAX_ARTICLES_PER_CATEGORY,
     MAX_ARTICLES_PER_BONUS_CATEGORY,
     PUBLISH_MAX_ARTICLES,
@@ -227,16 +227,42 @@ def llm_triage(articles: list[dict], client: OpenAI) -> list[dict]:
 
             selected.append(article)
 
-        # Apply buzz boost (only scoring adjustment we keep)
+        # Post-triage buzz accumulation: when the LLM deduplicates internally
+        # (picks one source over another), the code should still count that
+        # multiple sources covered the story — that's a signal of importance.
+        selected_set = {id(a) for a in selected}
+        unselected = [candidates[i] for i in range(len(candidates))
+                      if id(candidates[i]) not in selected_set]
+
+        for sel in selected:
+            sel_words = _title_words(sel["title"])
+            if not sel_words:
+                continue
+            for unsel in unselected:
+                unsel_words = _title_words(unsel["title"])
+                if not unsel_words:
+                    continue
+                union = sel_words | unsel_words
+                overlap = len(sel_words & unsel_words) / len(union) if union else 0.0
+                if overlap >= CROSS_SECTOR_THRESHOLD:
+                    sel["feed_mentions"] = sel.get("feed_mentions", 1) + unsel.get("feed_mentions", 1)
+
+        # Apply tiered buzz boost — viral stories get proportionally larger boosts
         for a in selected:
             mentions = a.get("feed_mentions", 1)
-            buzz_boost = min(mentions - 1, FEED_MENTION_BOOST_CAP)
+            buzz_boost = 0
+            for min_mentions, bonus in BUZZ_BOOST_TIERS:
+                if mentions >= min_mentions:
+                    buzz_boost = bonus
             a["score"] = a["score"] + buzz_boost
+            if mentions >= 2:
+                print(f"  [buzz] {a['title'][:50]} | buzz={mentions} | boost=+{buzz_boost}")
 
         print(f"  Triage: {len(selected)} selected from {len(candidates)} candidates")
         for a in selected:
             print(f"    [{a['score']:>2}] [tier={a.get('story_tier',0)}] "
-                  f"{'P' if a.get('is_primary') else 'S'} | {a['title'][:60]}")
+                  f"{'P' if a.get('is_primary') else 'S'} | buzz={a.get('feed_mentions',1)} "
+                  f"| {a['title'][:55]}")
 
         return selected
 
@@ -284,10 +310,13 @@ def enforce_diversity_and_caps(articles: list[dict]) -> list[dict]:
         cat = a.get("category", "")
         cat_cap = MAX_ARTICLES_PER_BONUS_CATEGORY if cat in _BONUS_CATEGORIES else MAX_ARTICLES_PER_CATEGORY
 
-        # Model releases always pass source cap
-        is_model_release = cat == "Model Releases"
+        # High-value articles bypass source cap:
+        # - Model releases (always important)
+        # - Score >= 7 (strong editorial signal — don't bury quality content)
+        score = a.get("score") or 0
+        is_exempt = cat == "Model Releases" or score >= 7
 
-        if not is_model_release and source_count.get(src, 0) >= MAX_ARTICLES_PER_SOURCE:
+        if not is_exempt and source_count.get(src, 0) >= MAX_ARTICLES_PER_SOURCE:
             dropped.append((a, f"source cap ({src})"))
             continue
         if cat and category_count.get(cat, 0) >= cat_cap:
